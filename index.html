@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DesktopChat Neo</title>
+<meta name="description" content="デスクトップの片隅で、アバターと一緒におしゃべり。DesktopChat Neo のダウンロードページ。">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #f6f4fd;
+    --card: #ffffff;
+    --ink: #2b2741;
+    --ink-2: #5d5878;
+    --ink-3: #8d88a6;
+    --line: rgba(80, 70, 130, 0.12);
+    --accent: #8f7cff;
+    --accent-2: #6fc6ff;
+    --shadow: 0 18px 40px rgba(40, 30, 90, 0.12), 0 2px 6px rgba(40, 30, 90, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17151f;
+      --card: #211e2c;
+      --ink: #eeeaff;
+      --ink-2: #b8b2d4;
+      --ink-3: #8a84a6;
+      --line: rgba(200, 190, 255, 0.12);
+      --shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Segoe UI Variable Text', 'Segoe UI', 'Yu Gothic UI', 'Hiragino Sans', system-ui, sans-serif;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 56px 16px 64px; }
+  .hero { text-align: center; }
+  .hero img { width: 96px; height: 96px; filter: drop-shadow(0 10px 22px rgba(143, 124, 255, 0.35)); }
+  h1 { font-size: 34px; margin: 14px 0 4px; letter-spacing: 0.01em; }
+  .lead { color: var(--ink-2); margin: 0 0 28px; }
+  .card { background: var(--card); border-radius: 22px; box-shadow: var(--shadow); padding: 26px 24px; }
+  .dl {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 16px 20px; border-radius: 999px; border: none;
+    background: linear-gradient(135deg, var(--accent), #a48cff 55%, var(--accent-2));
+    color: #fff; font: inherit; font-size: 17px; font-weight: 700; text-decoration: none;
+    box-shadow: 0 10px 24px rgba(143, 124, 255, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .dl:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(143, 124, 255, 0.5); }
+  .dl svg { width: 22px; height: 22px; flex: none; }
+  .meta { text-align: center; color: var(--ink-3); font-size: 13px; margin-top: 10px; min-height: 1.7em; }
+  .meta a { color: inherit; }
+  h2 { font-size: 16px; margin: 30px 0 8px; }
+  ol, ul { padding-left: 1.3em; margin: 0; color: var(--ink-2); }
+  li { margin: 4px 0; }
+  kbd {
+    font-family: inherit; font-size: 12.5px; padding: 1px 7px; border-radius: 6px;
+    background: var(--bg); border: 1px solid var(--line); color: var(--ink);
+  }
+  .note { margin-top: 26px; padding: 14px 16px; border-radius: 14px; background: var(--bg); color: var(--ink-2); font-size: 14px; }
+  footer { text-align: center; color: var(--ink-3); font-size: 12.5px; margin-top: 36px; }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <div class="hero">
+    <img src="icon.svg" alt="">
+    <h1>DesktopChat Neo</h1>
+    <p class="lead">デスクトップの片隅で、アバターと一緒におしゃべり。</p>
+  </div>
+
+  <div class="card">
+    <a class="dl" id="dl" href="https://github.com/rabbuttz/DesktopChatNeo-releases/releases/latest">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+      <span id="dl-label">Windows 版をダウンロード</span>
+    </a>
+    <div class="meta" id="meta">Windows 10 / 11（64bit）</div>
+
+    <h2>インストールのしかた</h2>
+    <ol>
+      <li>ダウンロードした <b>DesktopChatNeo-Setup</b> を開きます。</li>
+      <li>「Windows によって PC が保護されました」と出たら、<b>詳細情報</b> → <b>実行</b> を押してください。</li>
+      <li>画面の案内に沿ってインストールすると、画面の左下にアバターが出てきます。</li>
+    </ol>
+
+    <h2>つかいかた</h2>
+    <ul>
+      <li>左下の端にカーソルを近づけるとメニューが出ます。</li>
+      <li><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + 矢印キーで、画面の端へ移動できます。</li>
+      <li><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Shift</kbd> + 矢印キーで、別のディスプレイへ移動できます。</li>
+    </ul>
+
+    <div class="note">
+      新しいバージョンは自動で届きます。一度インストールすれば、あとはアプリが勝手に最新になります。
+    </div>
+  </div>
+
+  <footer>
+    <a href="https://github.com/rabbuttz/DesktopChatNeo-releases/releases">これまでのバージョン</a>
+  </footer>
+</main>
+<script>
+  // Point the button straight at the newest installer (falls back to the releases page as linked above)
+  fetch('https://api.github.com/repos/rabbuttz/DesktopChatNeo-releases/releases/latest')
+    .then(function (r) { return r.ok ? r.json() : null })
+    .then(function (rel) {
+      if (!rel || !rel.assets) return
+      var exe = rel.assets.find(function (a) { return /\.exe$/i.test(a.name) && !/blockmap/i.test(a.name) })
+      if (!exe) return
+      document.getElementById('dl').href = exe.browser_download_url
+      var mb = Math.round(exe.size / 1048576)
+      var date = new Date(rel.published_at).toLocaleDateString('ja-JP')
+      document.getElementById('meta').textContent = 'バージョン ' + rel.tag_name.replace(/^v/, '') + '・' + mb + ' MB・' + date + '・Windows 10 / 11（64bit）'
+    })
+    .catch(function () {})
+</script>
+</body>
+</html>
