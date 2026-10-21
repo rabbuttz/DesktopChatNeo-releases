@@ -870,9 +870,9 @@
     return {
       now: now.toISOString(), paused: false, orchestratorAlive: true,
       agents: [
-        ag('operator-1', 'sonnet', true, 'customer:a1b2c3', 2, 10),
-        ag('operator-2', 'sonnet', phase !== 1, 'customer:owner', 1, 30),
-        ag('operator-3', 'sonnet', phase === 2, 'customer:9f8e7d', 0, 60),
+        ag('operator-1', 'haiku', true, 'customer:a1b2c3', 2, 10),
+        ag('operator-2', 'haiku', phase !== 1, 'customer:owner', 1, 30),
+        ag('operator-3', 'haiku', phase === 2, 'customer:9f8e7d', 0, 60),
         ag('pm', 'opus', phase !== 2, phase === 0 ? 'pm:message' : 'pm:patrol', 4, 20),
         ag('engineer-1', 'haiku', true, 'T-12', 25, 90),
         ag('engineer-2', 'haiku', true, 'T-14', 6, 15),
