@@ -113,7 +113,7 @@
   .rooms {
     position: relative; display: grid; gap: 12px; padding: 12px 16px 4px;
     grid-template-columns: 150px repeat(3, minmax(0, 1fr));
-    grid-template-areas: "cust desk desk pm" "adv adv dev dev" "remote remote remote remote" "dock dock dock dock";
+    grid-template-areas: "cust desk desk pm" "adv adv dev dev" "dock dock dock dock";
   }
   .room {
     position: relative; border-radius: 12px; padding: 8px 10px 10px; min-height: 196px;
@@ -129,10 +129,9 @@
   #room-adv { grid-area: adv; }
   #room-dev { grid-area: dev; }
   #room-dock { grid-area: dock; min-height: 0; }
-  #room-remote { grid-area: remote; min-height: 0; }
-  #room-remote .seats { justify-content: flex-start; gap: 18px; min-height: 150px; }
-  .remote-empty { color: var(--ink-3); font-size: 12px; padding: 18px 6px; font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; }
-  .remote-empty a { color: var(--accent); }
+  /* GitHub contributors sit in the dev room too, after the team's engineers */
+  #room-dev .seats { row-gap: 14px; }
+  .agent.remote .desk { background: #8a8f98; }
   .agent .name a { color: inherit; text-decoration: none; }
 
   /* ───── loading dock (builds) ───── */
@@ -315,7 +314,7 @@
     header { padding: 12px 16px; }
     main { padding: 12px 16px 24px; gap: 12px; }
     .banner { margin: 12px 16px 0; }
-    .rooms { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cust" "desk" "pm" "dev" "adv" "remote" "dock"; padding: 12px; }
+    .rooms { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cust" "desk" "pm" "dev" "adv" "dock"; padding: 12px; }
     .lane .truck { transform: scale(.72); transform-origin: right bottom; }
     .lane .tag { right: 140px; }
     @keyframes carry {
@@ -371,12 +370,8 @@
         <div class="seats" data-role="advisor"></div>
       </div>
       <div class="room" id="room-dev">
-        <div class="room-title pixel">開発ルーム <span class="sub">それぞれの worktree で実装（UI は UIエンジニア）</span></div>
+        <div class="room-title pixel">開発ルーム <span class="sub">それぞれの worktree で実装（UI は UIエンジニア）。GitHub から参加した人も、ここに席が増えます</span></div>
         <div class="seats" data-role="engineer"></div>
-      </div>
-      <div class="room" id="room-remote">
-        <div class="room-title pixel">リモート席 <span class="sub">GitHub の Pull Request で手伝ってくれる人たち</span></div>
-        <div class="seats" id="remote-seats"></div>
       </div>
       <div class="room" id="room-dock">
         <div class="room-title pixel">出荷場 <span class="sub">型チェック・Rust・画面のビルドと、リリースの積み込み</span></div>
@@ -674,18 +669,12 @@
     }
   }
 
-  const REMOTE_STATUS = { working: '作業中', review: 'レビュー待ち', changes: '手直し中', waiting: '待機中' }
+  const REMOTE_STATUS = { working: '作業中', review: 'レビュー待ち', changes: '手直し中', offered: '引き受け待ち', waiting: '待機中' }
 
   function renderRemote() {
-    const box = $('#remote-seats')
+    const box = $('.seats[data-role="engineer"]')
     const list = state.contributors || []
     const now = nowMs()
-    if (!list.length) {
-      for (const k of Object.keys(seatEls)) if (k.startsWith('gh:')) delete seatEls[k]
-      box.innerHTML = '<div class="remote-empty">ほかの PC から GitHub の Pull Request で手伝ってくれる人が、ここに座ります。</div>'
-      return
-    }
-    if (box.querySelector('.remote-empty')) box.innerHTML = ''
     const keep = new Set(list.map((c) => 'gh:' + c.login))
     for (const [k, el] of Object.entries(seatEls)) {
       if (k.startsWith('gh:') && !keep.has(k)) {
@@ -700,19 +689,20 @@
         el = document.createElement('div')
         el.dataset.name = name
         el.innerHTML = `<div class="bubble"></div><div class="sprite">${agentSvg(name)}</div><div class="desk"></div>
-          <div class="name pixel"></div><div class="model">GitHub</div>`
+          <div class="name pixel"></div><div class="model"></div>`
         box.appendChild(el)
         seatEls[name] = el
       }
       const busy = c.status !== 'waiting'
-      el.className = `agent ${busy ? 'busy' : 'idle'}`
+      el.className = `agent remote ${busy ? 'busy' : 'idle'}`
       const pr = c.pr ? `PR #${c.pr.number}${c.pr.draft ? '（下書き）' : ''}` : ''
-      const what = c.status === 'review' ? `${pr} のレビュー待ち` : c.status === 'changes' ? `${pr || c.ticket} を手直し中`
+      const what = c.status === 'offered' ? `${c.offered ?? c.ticket} をお願い中` : c.status === 'review' ? `${pr} のレビュー待ち` : c.status === 'changes' ? `${pr || c.ticket} を手直し中`
         : c.status === 'working' ? `${c.ticket ?? ''} を作業中${pr ? `（${pr}）` : ''}` : '待機中'
       $('.name', el).innerHTML = c.pr?.url && !PUBLIC ? `<a href="${esc(c.pr.url)}" target="_blank" rel="noopener">@${esc(c.login)}</a>` : `@${esc(c.login)}`
       $('.bubble', el).innerHTML = busy
         ? `<span class="what">${esc(what)}</span><span class="time">${esc(REMOTE_STATUS[c.status] ?? '')}・${esc(ago(c.lastActiveAt, now))}</span>`
         : '<span class="zzz">z z</span>'
+      $('.model', el).textContent = c.weight && c.weight !== 1 ? `GitHub・配分 ×${c.weight}` : 'GitHub'
       el.setAttribute('aria-label', `@${c.login}: ${what}`)
     }
   }
@@ -963,6 +953,7 @@
       ],
       contributors: [
         { login: 'mika-dev', status: phase === 0 ? 'working' : 'review', ticket: 'T-17', pr: { number: 52, title: '吹き出しの影を少し濃くする', draft: phase === 0, url: '#' }, lastActiveAt: min(2) },
+        { login: 'hana', status: 'offered', offered: 'T-19', weight: 2, ticket: 'T-19', pr: null, lastActiveAt: min(1) },
         { login: 'toru', status: 'changes', ticket: 'T-18', pr: { number: 49, title: 'チャット欄の絵文字の欠けを直す', draft: false, url: '#' }, lastActiveAt: min(14) },
       ],
       builds: [
