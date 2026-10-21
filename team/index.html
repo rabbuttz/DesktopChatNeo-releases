@@ -254,7 +254,7 @@
   #detail .meta { color: var(--ink-3); font-size: 12px; }
   #detail pre {
     margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 12px;
-    color: var(--ink-2); max-height: 140px; overflow: auto;
+    color: var(--ink-2); line-height: 1.6; max-height: min(60vh, 520px); overflow: auto;
   }
   #detail .jobs { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: var(--ink-2); }
   #detail .jobs li { margin: 2px 0; }
@@ -644,20 +644,50 @@
     renderDetail()
   }
 
+  // Show { sprite, title, meta, body } in the detail panel. The panel is built once per selection; later polls only
+  // touch what changed, so a report scrolled halfway stays where it is.
+  function fillDetail(box, key, d) {
+    if (box.dataset.key !== key) {
+      box.className = 'show'
+      box.dataset.key = key
+      box.dataset.body = ''
+      box.innerHTML = `<div class="sprite"></div><div class="body"><div class="title pixel"></div><div class="meta"></div><div class="content"></div></div>
+        <button type="button" aria-label="閉じる">×</button>`
+      $('.sprite', box).innerHTML = d.sprite
+      $('button', box).onclick = () => { selected = null; renderDetail() }
+    }
+    const set = (sel, html) => { const el = $(sel, box); if (el.innerHTML !== html) el.innerHTML = html }
+    set('.title', d.title)
+    set('.meta', d.meta)
+    if (box.dataset.body !== d.body) {
+      const pre = $('.content pre', box)
+      const top = pre ? pre.scrollTop : 0
+      $('.content', box).innerHTML = d.body
+      const next = $('.content pre', box)
+      if (next) next.scrollTop = top
+      box.dataset.body = d.body
+    }
+  }
+
+  function clearDetail(box) {
+    box.className = ''
+    box.innerHTML = ''
+    delete box.dataset.key
+  }
+
   function renderDetail() {
     const box = $('#detail')
     if (selected?.startsWith('gh:')) return renderContributorDetail(box)
     const a = selected && state?.agents.find((x) => x.name === selected)
-    if (!a) { box.className = ''; box.innerHTML = ''; return }
+    if (!a) return clearDetail(box)
     const now = nowMs()
-    box.className = 'show'
-    box.innerHTML = `<div class="sprite">${agentSvg(a.name)}</div><div class="body">
-      <div class="title pixel">${esc(label(a.name))} <span class="chip">${esc(MODEL_NAME[a.model] ?? a.model)}</span></div>
-      <div class="meta">${a.busy ? `いま: ${esc(describe(a, state.tickets))}（${esc(elapsed(a.startedAt, now))}）` : 'いまは待機中'}
-        ${a.lastRunAt ? ` ・ 前回の起動: ${esc(ago(a.lastRunAt, now))}${a.lastExit ? `（${esc(a.lastExit)}）` : ''}` : ''}</div>
-      <pre>${a.lastResult ? esc(a.lastResult) : 'まだ報告はありません'}</pre></div>
-      <button type="button" aria-label="閉じる">×</button>`
-    $('button', box).onclick = () => { selected = null; renderDetail() }
+    fillDetail(box, a.name, {
+      sprite: agentSvg(a.name),
+      title: `${esc(label(a.name))} <span class="chip">${esc(MODEL_NAME[a.model] ?? a.model)}</span>`,
+      meta: `${a.busy ? `いま: ${esc(describe(a, state.tickets))}（${esc(elapsed(a.startedAt, now))}）` : 'いまは待機中'}${
+        a.lastRunAt ? ` ・ 前回の起動: ${esc(ago(a.lastRunAt, now))}${a.lastExit ? `（${esc(a.lastExit)}）` : ''}` : ''}`,
+      body: `<pre>${a.lastResult ? esc(a.lastResult) : 'まだ報告はありません'}</pre>`,
+    })
   }
 
   const JOB_STATUS = { offered: 'お願い中（引き受け待ち）', working: '作業中', review: 'レビュー待ち', changes: '手直し中' }
@@ -666,7 +696,7 @@
   function renderContributorDetail(box) {
     const login = selected.slice(3)
     const c = (state.contributors || []).find((x) => x.login === login)
-    if (!c) { box.className = ''; box.innerHTML = ''; return }
+    if (!c) return clearDetail(box)
     const now = nowMs()
     const jobs = c.jobs?.length ? c.jobs : c.status && c.status !== 'waiting' ? [{ ticket: c.offered ?? c.ticket, status: c.status, pr: c.pr }] : []
     const title = (id) => state.tickets?.find((t) => t.id === id)?.title ?? ''
@@ -675,13 +705,12 @@
       return `<li><b>${esc(j.ticket ?? '')}</b> ${esc(title(j.ticket))} — ${esc(JOB_STATUS[j.status] ?? j.status)}${pr ? ` ・ ${pr}` : ''}</li>`
     })
     const setup = [c.model ? `モデル ${MODEL_NAME[c.model] ?? c.model}` : '', `同時に ${c.maxActive ?? 1} 件まで`, c.weight && c.weight !== 1 ? `配分 ×${c.weight}` : ''].filter(Boolean).join(' ・ ')
-    box.className = 'show'
-    box.innerHTML = `<div class="sprite">${agentSvg(selected)}</div><div class="body">
-      <div class="title pixel">@${esc(login)} <span class="chip">GitHub の協力者</span></div>
-      <div class="meta">${esc(setup)}${c.lastActiveAt ? ` ・ 最後の動き: ${esc(ago(c.lastActiveAt, now))}` : ''}</div>
-      ${lines.length ? `<ul class="jobs">${lines.join('')}</ul>` : '<pre>いまは担当しているチケットはありません</pre>'}</div>
-      <button type="button" aria-label="閉じる">×</button>`
-    $('button', box).onclick = () => { selected = null; renderDetail() }
+    fillDetail(box, selected, {
+      sprite: agentSvg(selected),
+      title: `@${esc(login)} <span class="chip">GitHub の協力者</span>`,
+      meta: `${esc(setup)}${c.lastActiveAt ? ` ・ 最後の動き: ${esc(ago(c.lastActiveAt, now))}` : ''}`,
+      body: lines.length ? `<ul class="jobs">${lines.join('')}</ul>` : '<pre>いまは担当しているチケットはありません</pre>',
+    })
   }
 
   function renderAgents() {
