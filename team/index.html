@@ -414,6 +414,7 @@
     'advisor-2':  { label: 'シニア2',       color: '#5b6cc4', acc: 'glasses' },
   }
   const ORDER = Object.keys(AGENTS)
+  const MODEL_NAME = { opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku' }
   const ROLE_OF = (n) => n === 'pm' ? 'pm' : n.replace(/-\d+$/, '')
 
   const r = (x, y, w, h, fill, cls = '') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"${cls ? ` class="${cls}"` : ''}/>`
@@ -630,7 +631,7 @@
     const now = nowMs()
     box.className = 'show'
     box.innerHTML = `<div class="sprite">${agentSvg(a.name)}</div><div class="body">
-      <div class="title pixel">${esc(label(a.name))} <span class="chip">${esc(a.model)}</span></div>
+      <div class="title pixel">${esc(label(a.name))} <span class="chip">${esc(MODEL_NAME[a.model] ?? a.model)}</span></div>
       <div class="meta">${a.busy ? `いま: ${esc(describe(a, state.tickets))}（${esc(elapsed(a.startedAt, now))}）` : 'いまは待機中'}
         ${a.lastRunAt ? ` ・ 前回の起動: ${esc(ago(a.lastRunAt, now))}${a.lastExit ? `（${esc(a.lastExit)}）` : ''}` : ''}</div>
       <pre>${a.lastResult ? esc(a.lastResult) : 'まだ報告はありません'}</pre></div>
@@ -644,7 +645,7 @@
       const el = seatEls[a.name]
       if (!el) continue
       el.className = `agent ${a.busy ? 'busy' : 'idle'}`
-      $('.model', el).textContent = a.model === 'sonnet' ? 'Sonnet' : 'Opus'
+      $('.model', el).textContent = MODEL_NAME[a.model] ?? a.model
       $('.bubble', el).innerHTML = a.busy
         ? `<span class="what">${esc(describe(a, state.tickets))}</span>${buildsOf(a.name).length ? `<span class="build">📦 ${esc(buildsOf(a.name).map((b) => BUILD[b.kind]?.name ?? b.kind).join('・'))}</span>` : ''}<span class="time">${esc(elapsed(a.startedAt, now))}<span class="typing"><i></i><i></i><i></i></span></span>`
         : '<span class="zzz">z z</span>'
@@ -869,13 +870,13 @@
     return {
       now: now.toISOString(), paused: false, orchestratorAlive: true,
       agents: [
-        ag('operator-1', 'opus', true, 'customer:a1b2c3', 2, 10),
-        ag('operator-2', 'opus', phase !== 1, 'customer:owner', 1, 30),
-        ag('operator-3', 'opus', phase === 2, 'customer:9f8e7d', 0, 60),
+        ag('operator-1', 'sonnet', true, 'customer:a1b2c3', 2, 10),
+        ag('operator-2', 'sonnet', phase !== 1, 'customer:owner', 1, 30),
+        ag('operator-3', 'sonnet', phase === 2, 'customer:9f8e7d', 0, 60),
         ag('pm', 'opus', phase !== 2, phase === 0 ? 'pm:message' : 'pm:patrol', 4, 20),
-        ag('engineer-1', 'sonnet', true, 'T-12', 25, 90),
-        ag('engineer-2', 'sonnet', true, 'T-14', 6, 15),
-        ag('engineer-3', 'sonnet', false, null, 0, 120),
+        ag('engineer-1', 'haiku', true, 'T-12', 25, 90),
+        ag('engineer-2', 'haiku', true, 'T-14', 6, 15),
+        ag('engineer-3', 'haiku', false, null, 0, 120),
         ag('engineer-4', 'opus', phase !== 2, 'T-16', 9, 40),
         ag('advisor-1', 'opus', phase !== 0, 'consult:engineer-1:T-12', 1, 45),
         ag('advisor-2', 'opus', phase === 0, 'consult:operator-3:general', 1, 200),
