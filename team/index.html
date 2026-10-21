@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>チームの様子</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap">
+<style>
+  :root {
+    --bg: #f6f1ea;
+    --panel: #fffdf9;
+    --panel-2: #f1ebe2;
+    --line: #e2d8ca;
+    --ink: #2b2620;
+    --ink-2: #6f655a;
+    --ink-3: #a3988b;
+    --accent: #d97757;
+    --ok: #3f9a62;
+    --warn: #c98a1b;
+    --bad: #c4513f;
+    --floor-a: #efe6d9;
+    --floor-b: #e9dfd0;
+    --bubble: #ffffff;
+    --eye: #1d1b19;
+    --shadow: 0 1px 0 rgba(60, 40, 20, .06), 0 6px 18px rgba(60, 40, 20, .06);
+    --road: #d9cfc0;
+    --road-line: #f6f1ea;
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --bg: #1b1916;
+    --panel: #24211d;
+    --panel-2: #2c2823;
+    --line: #3a352e;
+    --ink: #efe8de;
+    --ink-2: #b3a99c;
+    --ink-3: #7d7368;
+    --floor-a: #26231f;
+    --floor-b: #2a2622;
+    --bubble: #34302a;
+    --eye: #121110;
+    --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 6px 18px rgba(0, 0, 0, .25);
+    --road: #33302b;
+    --road-line: #5a544b;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1b1916;
+      --panel: #24211d;
+      --panel-2: #2c2823;
+      --line: #3a352e;
+      --ink: #efe8de;
+      --ink-2: #b3a99c;
+      --ink-3: #7d7368;
+      --floor-a: #26231f;
+      --floor-b: #2a2622;
+      --bubble: #34302a;
+      --eye: #121110;
+      --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 6px 18px rgba(0, 0, 0, .25);
+      --road: #33302b;
+      --road-line: #5a544b;
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+  .pixel { font-family: "DotGothic16", "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; letter-spacing: .02em; }
+
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  header h1 { margin: 0; font-size: 20px; font-weight: 400; display: flex; align-items: center; gap: 8px; }
+  header h1 svg { width: 30px; height: auto; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+    background: var(--panel-2); color: var(--ink-2); font-size: 12px; border: 1px solid var(--line);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+  .dot.ok { background: var(--ok); }
+  .dot.bad { background: var(--bad); }
+  .dot.warn { background: var(--warn); }
+  button.pill { cursor: pointer; font: inherit; font-size: 12px; }
+
+  main {
+    display: grid; gap: 16px; padding: 16px 20px 28px;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-areas: "office feed" "board board";
+    max-width: 1500px; margin: 0 auto;
+  }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+  .card > h2 {
+    margin: 0; padding: 12px 16px 0; font-size: 15px; font-weight: 400; color: var(--ink-2);
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .card > h2 small { font-family: inherit; font-size: 12px; color: var(--ink-3); }
+
+  /* ───── office ───── */
+  #office { grid-area: office; position: relative; padding-bottom: 12px; }
+  .rooms {
+    position: relative; display: grid; gap: 12px; padding: 12px 16px 4px;
+    grid-template-columns: 150px repeat(3, minmax(0, 1fr));
+    grid-template-areas: "cust desk desk pm" "adv adv dev dev" "dock dock dock dock";
+  }
+  .room {
+    position: relative; border-radius: 12px; padding: 8px 10px 10px; min-height: 196px;
+    background:
+      repeating-conic-gradient(var(--floor-a) 0 25%, var(--floor-b) 0 50%) 0 0 / 24px 24px;
+    border: 1px solid var(--line);
+  }
+  .room-title { font-size: 13px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+  .room-title .sub { color: var(--ink-3); font-size: 11px; font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; }
+  #room-cust { grid-area: cust; }
+  #room-desk { grid-area: desk; }
+  #room-pm { grid-area: pm; }
+  #room-adv { grid-area: adv; }
+  #room-dev { grid-area: dev; }
+  #room-dock { grid-area: dock; min-height: 0; }
+
+  /* ───── loading dock (builds) ───── */
+  .lanes { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .lane {
+    position: relative; height: 96px; border-radius: 10px; overflow: hidden;
+    background:
+      linear-gradient(90deg, var(--road-line) 0 18px, transparent 18px 36px) 0 84px / 36px 2px repeat-x,
+      linear-gradient(to bottom, transparent 0 74px, var(--road) 74px 96px);
+  }
+  .lane .shed { position: absolute; left: 6px; bottom: 22px; width: 66px; height: 58px; }
+  .lane .shed svg { width: 66px; height: 58px; display: block; }
+  .lane .truck { position: absolute; right: 10px; bottom: 14px; width: 176px; height: 104px; }
+  .lane .truck svg { width: 176px; height: 104px; display: block; overflow: visible; }
+  .lane .porter { position: absolute; bottom: 22px; left: 74px; width: 46px; height: 46px; animation: carry var(--trip, 3.2s) linear infinite; }
+  .lane .porter svg { width: 46px; height: 40px; display: block; overflow: visible; }
+  .lane .porter .box {
+    position: absolute; left: 13px; top: -12px; width: 20px; height: 16px; border-radius: 2px; font-size: 9px; line-height: 16px;
+    text-align: center; color: #fff; font-family: "DotGothic16", sans-serif; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .18);
+    animation: boxvis var(--trip, 3.2s) steps(1) infinite;
+  }
+  .lane .porter .body { animation: walk .3s steps(2) infinite; }
+  .lane .tag {
+    position: absolute; left: 82px; top: 6px; right: 196px; font-size: 12px; color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+  }
+  .lane .tag small { color: var(--ink-3); margin-left: 6px; }
+  .lane.leaving .truck { animation: drive 2.6s ease-in forwards; }
+  .lane.leaving .tag { color: var(--ok); }
+  .lane.parked { height: 70px; background: linear-gradient(to bottom, transparent 0 48px, var(--road) 48px 70px); }
+  .lane.parked .truck { bottom: 8px; transform: scale(.7); transform-origin: right bottom; opacity: .7; }
+  .lane.parked .tag { top: 24px; left: 12px; color: var(--ink-3); }
+  /* to the truck carrying a box, back without one (turned around) */
+  @keyframes carry {
+    0% { left: 74px; transform: scaleX(1); }
+    46% { left: calc(100% - 214px); transform: scaleX(1); }
+    50% { left: calc(100% - 214px); transform: scaleX(-1); }
+    96% { left: 74px; transform: scaleX(-1); }
+    100% { left: 74px; transform: scaleX(1); }
+  }
+  @keyframes boxvis { 0% { opacity: 1; } 48% { opacity: 0; } 98% { opacity: 1; } }
+  @keyframes walk { 0% { transform: translateY(0); } 100% { transform: translateY(-2px); } }
+  @keyframes drive { 0% { transform: translateX(0); } 15% { transform: translateX(-6px); } 100% { transform: translateX(130%); } }
+  .bubble .build { display: block; color: var(--accent); }
+  .seats { display: flex; justify-content: space-around; align-items: flex-end; gap: 6px; height: calc(100% - 22px); flex-wrap: wrap; }
+
+  .agent {
+    position: relative; display: flex; flex-direction: column; align-items: center; width: 118px;
+    padding-top: 76px; cursor: pointer; border-radius: 10px; outline: none;
+  }
+  .agent:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+  .agent .sprite { width: 80px; height: 64px; display: flex; justify-content: center; align-items: flex-end; }
+  .agent .sprite svg { width: 80px; height: 62px; overflow: visible; }
+  .agent .desk { width: 84px; height: 10px; border-radius: 3px; background: #b9906a; margin-top: -4px; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .15); }
+  .agent .name { margin-top: 6px; font-size: 12px; color: var(--ink); white-space: nowrap; }
+  .agent .model { font-size: 10px; color: var(--ink-3); font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; }
+  .agent.idle .sprite { opacity: .78; }
+  .agent.busy .sprite svg { animation: bob .6s steps(2) infinite; }
+  .agent.idle .sprite svg { animation: breathe 3.2s ease-in-out infinite; }
+  .agent.busy .eyes { animation: blink 4s infinite; transform-origin: center; }
+  @keyframes bob { 0% { transform: translateY(0); } 100% { transform: translateY(-3px); } }
+  @keyframes breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.96); } }
+  @keyframes blink { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+
+  .bubble {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 128px; min-height: 44px; padding: 5px 8px; border-radius: 10px; background: var(--bubble);
+    border: 1px solid var(--line); font-size: 11px; line-height: 1.35; color: var(--ink);
+    font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+    box-shadow: var(--shadow);
+  }
+  .bubble .what { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .bubble .time { display: block; }
+  .bubble::after {
+    content: ""; position: absolute; bottom: -6px; left: 50%; margin-left: -6px;
+    border: 6px solid transparent; border-bottom: 0; border-top-color: var(--bubble);
+  }
+  .bubble .time { color: var(--ink-3); }
+  .agent.idle .bubble { background: transparent; border-color: transparent; box-shadow: none; color: var(--ink-3); text-align: center; padding-top: 18px; }
+  .agent.idle .bubble::after { display: none; }
+  .zzz { display: inline-block; animation: zzz 2.4s ease-in-out infinite; font-family: "DotGothic16", sans-serif; }
+  @keyframes zzz { 0%, 100% { transform: translateY(0); opacity: .5; } 50% { transform: translateY(-4px); opacity: 1; } }
+  .typing { display: inline-flex; gap: 2px; margin-left: 2px; vertical-align: middle; }
+  .typing i { width: 3px; height: 3px; background: var(--ink-2); border-radius: 50%; animation: typing 1s infinite; }
+  .typing i:nth-child(2) { animation-delay: .15s; }
+  .typing i:nth-child(3) { animation-delay: .3s; }
+  @keyframes typing { 0%, 60%, 100% { opacity: .2; } 30% { opacity: 1; } }
+
+  .customers { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; align-items: center; }
+  .customer { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: var(--ink-2); font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; }
+  .customer svg { width: 34px; height: 34px; }
+  .customer.talking svg { animation: bob .8s steps(2) infinite; }
+  .customer-empty { color: var(--ink-3); font-size: 11px; text-align: center; margin-top: 40px; font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; }
+
+  #links { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  #links path { fill: none; stroke-width: 2; stroke-dasharray: 5 5; animation: dash 1s linear infinite; }
+  #links text { font-size: 11px; paint-order: stroke; stroke: var(--panel); stroke-width: 4px; fill: var(--ink-2); }
+  @keyframes dash { to { stroke-dashoffset: -10; } }
+
+  .envelope {
+    position: absolute; z-index: 5; width: 22px; height: 16px; pointer-events: none; left: 0; top: 0;
+    will-change: transform;
+  }
+  .envelope svg { width: 22px; height: 16px; display: block; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .2)); }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 6px 16px 0; color: var(--ink-3); font-size: 11px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 16px; height: 0; border-top: 2px dashed currentColor; display: inline-block; }
+
+  /* ───── detail ───── */
+  #detail {
+    margin: 10px 16px 0; padding: 10px 12px; border-radius: 10px; background: var(--panel-2);
+    border: 1px solid var(--line); display: none; gap: 12px; align-items: flex-start;
+  }
+  #detail.show { display: flex; }
+  #detail .sprite svg { width: 48px; height: 48px; }
+  #detail .body { min-width: 0; flex: 1; }
+  #detail .title { font-size: 14px; }
+  #detail .meta { color: var(--ink-3); font-size: 12px; }
+  #detail pre {
+    margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 12px;
+    color: var(--ink-2); max-height: 140px; overflow: auto;
+  }
+  #detail button { margin-left: auto; background: none; border: 0; color: var(--ink-3); font-size: 18px; cursor: pointer; line-height: 1; }
+
+  /* ───── feed ───── */
+  #feed { grid-area: feed; display: flex; flex-direction: column; min-height: 0; max-height: 640px; }
+  .tabs { display: flex; gap: 4px; padding: 10px 12px 0; }
+  .tabs button {
+    font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 1px solid transparent;
+    background: none; color: var(--ink-2); cursor: pointer;
+  }
+  .tabs button[aria-selected="true"] { background: var(--panel-2); border-color: var(--line); color: var(--ink); }
+  #feed-list { list-style: none; margin: 0; padding: 8px 12px 12px; overflow-y: auto; flex: 1; min-height: 240px; }
+  #feed-list li { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+  #feed-list li:last-child { border-bottom: 0; }
+  #feed-list li.fresh { animation: fresh 1.6s ease-out; }
+  @keyframes fresh { from { background: color-mix(in srgb, var(--accent) 16%, transparent); } to { background: transparent; } }
+  .mini { width: 26px; height: 26px; flex: none; }
+  .mini svg { width: 26px; height: 26px; }
+  .msg { min-width: 0; flex: 1; }
+  .msg .head { font-size: 12px; color: var(--ink-2); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .msg .head b { font-weight: 600; color: var(--ink); }
+  .msg .head .t { margin-left: auto; color: var(--ink-3); font-size: 11px; }
+  .msg .text { font-size: 13px; white-space: pre-wrap; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .msg.log .text { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11px; color: var(--ink-2); -webkit-line-clamp: 3; }
+  .chip { font-size: 11px; padding: 0 6px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--line); color: var(--ink-2); }
+  .empty { color: var(--ink-3); text-align: center; padding: 30px 0; font-size: 13px; }
+
+  /* ───── board ───── */
+  #board { grid-area: board; }
+  .kanban { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; padding: 12px 16px 16px; }
+  .col { background: var(--panel-2); border-radius: 10px; padding: 8px; min-height: 120px; }
+  .col h3 { margin: 0 0 6px; font-size: 13px; font-weight: 400; color: var(--ink-2); display: flex; justify-content: space-between; }
+  .col h3 span { color: var(--ink-3); }
+  .tcard { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; margin-bottom: 6px; font-size: 12px; }
+  .tcard .top { display: flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: 11px; }
+  .tcard .top .id { color: var(--ink-2); font-weight: 600; }
+  .tcard .ttl { margin: 2px 0 4px; color: var(--ink); line-height: 1.4; }
+  .tcard .bottom { display: flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: 11px; }
+  .tcard .bottom .mini, .tcard .bottom .mini svg { width: 18px; height: 18px; }
+  .tcard .st { margin-left: auto; }
+  .prio { font-size: 10px; padding: 0 5px; border-radius: 4px; border: 1px solid currentColor; }
+  .prio.high { color: var(--bad); }
+  .prio.normal { color: var(--ink-3); }
+  .prio.low { color: var(--ink-3); opacity: .7; }
+  .st.blocked { color: var(--bad); }
+  .st.changes, .st.needs-info, .st.waiting-owner { color: var(--warn); }
+  .tcard.dim { opacity: .6; }
+
+  .banner { margin: 12px 20px 0; padding: 10px 14px; border-radius: 10px; background: color-mix(in srgb, var(--bad) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--bad) 35%, var(--line)); color: var(--ink); font-size: 13px; display: none; }
+  .banner.show { display: block; }
+
+  @media (max-width: 1100px) {
+    main { grid-template-columns: minmax(0, 1fr); grid-template-areas: "office" "feed" "board"; }
+    #feed { max-height: 520px; }
+    .kanban { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (max-width: 760px) {
+    header { padding: 12px 16px; }
+    main { padding: 12px 16px 24px; gap: 12px; }
+    .banner { margin: 12px 16px 0; }
+    .rooms { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cust" "desk" "pm" "dev" "adv" "dock"; padding: 12px; }
+    .lane .truck { transform: scale(.72); transform-origin: right bottom; }
+    .lane .tag { right: 140px; }
+    @keyframes carry {
+      0% { left: 74px; transform: scaleX(1); }
+      46% { left: calc(100% - 170px); transform: scaleX(1); }
+      50% { left: calc(100% - 170px); transform: scaleX(-1); }
+      96% { left: 74px; transform: scaleX(-1); }
+      100% { left: 74px; transform: scaleX(1); }
+    }
+    .room { min-height: 0; }
+    .seats { height: auto; }
+    .customers { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+    .customer-empty { margin: 8px 0; }
+    .kanban { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+    .agent { width: 104px; }
+    .bubble { width: 112px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 class="pixel"><span id="logo"></span>チームの様子</h1>
+  <div class="pills">
+    <span class="pill"><span class="dot" id="conn-dot"></span><span id="conn-text">接続中…</span></span>
+    <span class="pill" id="pause-pill" hidden><span class="dot warn"></span>一時停止中</span>
+    <span class="pill" id="updated">—</span>
+    <button class="pill" id="theme-btn" type="button" aria-label="表示の明るさを切り替え">◐</button>
+  </div>
+</header>
+<div class="banner" id="banner"></div>
+
+<main>
+  <section class="card" id="office" aria-label="オフィス">
+    <h2 class="pixel">オフィス <small>キャラをクリックすると、最後の報告が見られます</small></h2>
+    <div class="rooms" id="rooms">
+      <div class="room" id="room-cust">
+        <div class="room-title pixel">お客様</div>
+        <div class="customers" id="customers"></div>
+      </div>
+      <div class="room" id="room-desk">
+        <div class="room-title pixel">窓口 <span class="sub">お客様と会話して、直すことを固める</span></div>
+        <div class="seats" data-role="operator"></div>
+      </div>
+      <div class="room" id="room-pm">
+        <div class="room-title pixel">PM デスク <span class="sub">割り当て・レビュー・リリース</span></div>
+        <div class="seats" data-role="pm"></div>
+      </div>
+      <div class="room" id="room-adv">
+        <div class="room-title pixel">相談室 <span class="sub">なんでも聞ける</span></div>
+        <div class="seats" data-role="advisor"></div>
+      </div>
+      <div class="room" id="room-dev">
+        <div class="room-title pixel">開発ルーム <span class="sub">それぞれの worktree で実装（UI は UIエンジニア）</span></div>
+        <div class="seats" data-role="engineer"></div>
+      </div>
+      <div class="room" id="room-dock">
+        <div class="room-title pixel">出荷場 <span class="sub">型チェック・Rust・画面のビルドと、リリースの積み込み</span></div>
+        <div class="lanes" id="lanes"></div>
+      </div>
+      <svg id="links" aria-hidden="true"></svg>
+    </div>
+    <div class="legend">
+      <span><i style="color:#4f9dde"></i>お客様と会話中</span>
+      <span><i style="color:#8a8f98"></i>相談中</span>
+      <span>✉ メッセージが飛ぶとボードで連絡したところ</span>
+    </div>
+    <div id="detail" role="region" aria-live="polite"></div>
+  </section>
+
+  <section class="card" id="feed" aria-label="やりとり">
+    <h2 class="pixel">やりとり</h2>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" aria-selected="true" data-tab="messages">メッセージ</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="log">オーケストレーターの記録</button>
+    </div>
+    <ul id="feed-list"></ul>
+  </section>
+
+  <section class="card" id="board" aria-label="チケット">
+    <h2 class="pixel">チケット <small id="ticket-count"></small></h2>
+    <div class="kanban" id="kanban"></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  // ───────── characters ─────────
+  const AGENTS = {
+    'operator-1': { label: 'オペレーター1', color: '#4f9dde', acc: 'headset' },
+    'operator-2': { label: 'オペレーター2', color: '#3fb8a9', acc: 'headset' },
+    'operator-3': { label: 'オペレーター3', color: '#7bc950', acc: 'headset' },
+    'pm':         { label: 'PM',           color: '#d97757', acc: 'tie' },
+    'engineer-1': { label: 'エンジニア1',   color: '#9b7be0', acc: 'hardhat' },
+    'engineer-2': { label: 'エンジニア2',   color: '#e57ab3', acc: 'hardhat' },
+    'engineer-3': { label: 'エンジニア3',   color: '#b5835a', acc: 'hardhat' },
+    'engineer-4': { label: 'UIエンジニア',  color: '#e8b83a', acc: 'beret' },
+    'advisor-1':  { label: 'シニア1',       color: '#8a8f98', acc: 'glasses' },
+    'advisor-2':  { label: 'シニア2',       color: '#5b6cc4', acc: 'glasses' },
+  }
+  const ORDER = Object.keys(AGENTS)
+  const ROLE_OF = (n) => n === 'pm' ? 'pm' : n.replace(/-\d+$/, '')
+
+  const r = (x, y, w, h, fill, cls = '') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"${cls ? ` class="${cls}"` : ''}/>`
+
+  // Clawd: a wide block body, two square eyes, stubby arms and four legs, drawn on a 14×9 pixel grid.
+  function clawd(color, acc) {
+    const eye = 'var(--eye)'
+    let s = ''
+    s += r(2, 0, 10, 7, color)          // body
+    s += r(0, 3, 2, 2, color)           // arms
+    s += r(12, 3, 2, 2, color)
+    for (const x of [2, 4, 9, 11]) s += r(x, 7, 1, 2, color) // legs
+    s += `<g class="eyes">${r(4, 2, 1, 2, eye)}${r(9, 2, 1, 2, eye)}</g>`
+    const dark = '#3a3530'
+    if (acc === 'headset') {
+      s += r(2, -2, 10, 1, dark) + r(1, -1, 1, 3, dark) + r(12, -1, 1, 3, dark)
+      s += r(0, 1, 2, 2, dark) + r(12, 1, 2, 2, dark)
+      s += r(11, 5, 2, 1, dark) + r(10, 5, 1, 1, '#e44')
+    } else if (acc === 'tie') {
+      s += r(6, 4, 2, 1, '#8e2f2f') + r(6, 5, 2, 2, '#b53b3b')
+      s += r(13, 1, 3, 5, '#8a6a48') + r(13.5, 2, 2, 3.5, '#fbf7ef') + r(14, 0.5, 1, 1, '#cfcfcf')
+    } else if (acc === 'hardhat') {
+      s += r(4, -3, 6, 1, '#ffd23f') + r(3, -2, 8, 1, '#ffd23f') + r(1, -1, 12, 1, '#f2b705')
+      s += r(6, -3, 2, 2, '#fff1a8')
+    } else if (acc === 'beret') {
+      s += r(3, -2, 8, 2, '#b8323f') + r(2, -1, 3, 1, '#b8323f') + r(7, -3, 1, 1, '#b8323f')
+      s += r(14, 1, 1, 4, '#8a6a48') + r(14, 0, 1, 1, '#e8eef5') + r(13.5, -1, 2, 1.2, '#4f9dde')  // paintbrush
+    } else if (acc === 'glasses') {
+      const g = '#2b2b2b'
+      for (const x0 of [3, 8]) s += r(x0, 1, 3, 1, g) + r(x0, 4, 3, 1, g) + r(x0, 2, 1, 2, g) + r(x0 + 2, 2, 1, 2, g)
+      s += r(6, 2, 2, 1, g)
+      s += r(5, 5, 4, 1, '#f3efe7')     // a little white moustache
+    }
+    return `<svg viewBox="-1 -4 18 14" shape-rendering="crispEdges" aria-hidden="true">${s}</svg>`
+  }
+  const agentSvg = (name) => {
+    const a = AGENTS[name]
+    return a ? clawd(a.color, a.acc) : clawd('#c9c2b8', '')
+  }
+  // A plain round person for the customers.
+  const personSvg = (owner) => `<svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">
+    ${r(4, 0, 4, 1, owner ? '#e8b83a' : '#7a6f63')}${r(3, 1, 6, 4, '#f0c9a5')}${r(4, 2, 1, 1, '#2b2620')}${r(7, 2, 1, 1, '#2b2620')}
+    ${r(2, 6, 8, 6, owner ? '#d97757' : '#8fa3b8')}${owner ? r(3, -1, 6, 1, '#e8b83a') + r(3, -2, 1, 1, '#e8b83a') + r(5.5, -2, 1, 1, '#e8b83a') + r(8, -2, 1, 1, '#e8b83a') : ''}</svg>`
+  const envelopeSvg = (color) => `<svg viewBox="0 0 22 16" aria-hidden="true"><rect x="1" y="1" width="20" height="14" rx="2" fill="#fffaf0" stroke="${color}" stroke-width="2"/><path d="M2 2 L11 9 L20 2" fill="none" stroke="${color}" stroke-width="2"/></svg>`
+
+  document.getElementById('logo').innerHTML = clawd('#d97757', '')
+
+  // ───────── helpers ─────────
+  const $ = (s, el = document) => el.querySelector(s)
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  const label = (n) => AGENTS[n]?.label ?? (n === 'human' ? 'ひと' : n === 'orchestrator' ? 'オーケストレーター' : n)
+  function custLabel(to) {
+    const id = String(to).slice('customer:'.length)
+    return id === 'owner' ? 'オーナー' : `お客様 #${id}`
+  }
+  const toLabel = (to) => String(to).startsWith('customer:') ? `${custLabel(to)} の担当` : label(to)
+  function ago(iso, now) {
+    if (!iso) return ''
+    const s = Math.max(0, (now - Date.parse(iso)) / 1000)
+    if (s < 60) return 'たった今'
+    if (s < 3600) return `${Math.floor(s / 60)}分前`
+    if (s < 86400) return `${Math.floor(s / 3600)}時間前`
+    return `${Math.floor(s / 86400)}日前`
+  }
+  function elapsed(iso, now) {
+    if (!iso) return ''
+    const m = Math.max(0, Math.floor((now - Date.parse(iso)) / 60000))
+    return m < 1 ? '始めたところ' : m < 60 ? `${m}分` : `${Math.floor(m / 60)}時間${m % 60}分`
+  }
+  const hhmm = (iso) => {
+    const d = new Date(iso)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+
+  const STATUS = {
+    'open': '受付', 'needs-info': 'お客様に確認中', 'waiting-owner': 'オーナー確認待ち', 'assigned': '着手待ち',
+    'in_progress': '作業中', 'changes': '手直し中', 'blocked': '困りごと', 'review': 'レビュー待ち',
+    'ready': 'リリース待ち', 'released': 'リリース済み', 'dropped': '見送り',
+  }
+  const COLUMNS = [
+    { title: '受付', st: ['open', 'needs-info', 'waiting-owner'] },
+    { title: '着手待ち', st: ['assigned'] },
+    { title: '作業中', st: ['in_progress', 'changes', 'blocked'] },
+    { title: 'レビュー', st: ['review'] },
+    { title: 'リリース待ち', st: ['ready'] },
+    { title: '完了', st: ['released', 'dropped'] },
+  ]
+
+  // What an agent is doing, in words, from its task string.
+  function describe(a, tickets) {
+    const t = a.task || ''
+    if (t.startsWith('customer:')) return `${custLabel(t)}と会話中`
+    if (t === 'pm:patrol') return '見回り中（進み具合とリリースの確認）'
+    if (t === 'pm:message') return '届いたメッセージを確認中'
+    if (t.startsWith('consult:')) {
+      const [, asker, tk] = t.split(':')
+      return `${label(asker)}の相談に回答中${tk && tk !== 'general' ? `（${tk}）` : ''}`
+    }
+    const m = t.match(/^T-\d+$/)
+    if (m) {
+      const tk = tickets.find((x) => x.id === t)
+      const verb = tk?.status === 'changes' ? '手直し中' : '実装中'
+      return `${t}${tk ? `「${tk.title}」` : ''}を${verb}`
+    }
+    return t ? t : '作業中'
+  }
+
+  // ───────── builds ─────────
+  const BUILD = {
+    typecheck: { name: '型チェック', box: 'TS', color: '#3b78c4' },
+    rust: { name: 'Rust のビルド', box: 'Rs', color: '#b4532a' },
+    bundle: { name: '画面のビルド', box: '画', color: '#3f9a62' },
+    release: { name: 'リリースの積み込み', box: '出荷', color: '#c4513f' },
+  }
+  const buildsOf = (name) => (state.builds || []).filter((b) => b.agent === name)
+  const boxesFor = (b, now) => Math.min(12, 1 + Math.floor(Math.max(0, (now - Date.parse(b.startedAt)) / 1000) / 5))
+
+  const shedSvg = () => `<svg viewBox="0 0 22 19" shape-rendering="crispEdges" aria-hidden="true">
+    ${r(0, 4, 22, 15, '#9c7b5b')}${r(1, 0, 20, 4, '#7a5c41')}${r(6, 8, 10, 11, '#4a3b2d')}
+    ${r(7, 14, 4, 4, '#c9a074')}${r(11, 14, 4, 4, '#b8905f')}${r(9, 10, 4, 4, '#d8b384')}</svg>`
+
+  // A side-view pixel truck in the agent's colour with n boxes stacked on the bed (box colour from the build kind).
+  function truckSvg(color, kind, n) {
+    const k = BUILD[kind] ?? BUILD.bundle
+    let boxes = ''
+    for (let i = 0; i < n; i++) {
+      const col = i % 4, row = Math.floor(i / 4)
+      boxes += r(2 + col * 7, 25 - row * 6, 6, 5, k.color) + r(2 + col * 7, 25 - row * 6, 6, 1, 'rgba(255,255,255,.35)')
+    }
+    return `<svg viewBox="0 0 44 36" shape-rendering="crispEdges" aria-hidden="true">
+      ${boxes}
+      ${r(0, 30, 30, 2, '#5b524a')}${r(1, 24, 1, 6, '#5b524a')}${r(29, 24, 1, 6, '#5b524a')}
+      ${r(30, 20, 11, 12, color)}${r(32, 22, 6, 4, '#cfe6f5')}${r(41, 27, 2, 4, color)}${r(42, 28, 2, 2, '#ffe18a')}
+      ${r(4, 32, 5, 4, '#2b2620')}${r(5, 33, 3, 2, '#8a8f98')}${r(31, 32, 5, 4, '#2b2620')}${r(32, 33, 3, 2, '#8a8f98')}</svg>`
+  }
+
+  function renderDock() {
+    const box = $('#lanes')
+    const now = nowMs()
+    const lanes = []
+    for (const b of state.builds || []) {
+      const k = BUILD[b.kind] ?? BUILD.bundle
+      lanes.push(`<div class="lane" style="--trip:${b.kind === 'release' ? '2.4s' : '3.2s'}">
+        <div class="shed">${shedSvg()}</div>
+        <div class="tag"><b>${esc(label(b.agent))}</b> ${esc(k.name)}<small>${esc(b.detail || '')}・${esc(elapsed(b.startedAt, now))}</small></div>
+        <div class="porter"><div class="body">${agentSvg(b.agent)}</div><div class="box" style="background:${k.color}">${k.box}</div></div>
+        <div class="truck">${truckSvg(AGENTS[b.agent]?.color ?? '#a3988b', b.kind, boxesFor(b, now))}</div></div>`)
+    }
+    // a release that has just finished drives off
+    for (const b of state.recentBuilds || []) {
+      if (b.kind !== 'release' || now - Date.parse(b.endedAt) > 25_000) continue
+      lanes.push(`<div class="lane leaving"><div class="shed">${shedSvg()}</div>
+        <div class="tag"><b>${esc(label(b.agent))}</b> 出荷しました！</div>
+        <div class="truck">${truckSvg(AGENTS[b.agent]?.color ?? '#a3988b', 'release', 12)}</div></div>`)
+    }
+    if (!lanes.length) {
+      const last = (state.recentBuilds || []).at(-1)
+      lanes.push(`<div class="lane parked"><div class="tag">いまビルドしている人はいません${last ? `（最後は ${esc(label(last.agent))} の${esc(BUILD[last.kind]?.name ?? '')}、${esc(ago(last.endedAt, now))}）` : ''}</div>
+        <div class="truck">${truckSvg('#a3988b', 'bundle', 0)}</div></div>`)
+    }
+    // Rebuild the lanes only when who/what changes, so the walking animation is not restarted every poll.
+    const shape = JSON.stringify([(state.builds || []).map((b) => b.agent + b.kind + b.startedAt), lanes.length, lanes.some((l) => l.includes('leaving'))])
+    if (box.dataset.shape !== shape || box.querySelector('.parked')) {
+      box.innerHTML = lanes.join('')
+      box.dataset.shape = shape
+      return
+    }
+    const els = box.querySelectorAll('.lane:not(.leaving)')
+    ;(state.builds || []).forEach((b, i) => {
+      const el = els[i]
+      if (!el) return
+      $('.tag small', el).textContent = `${b.detail || ''}・${elapsed(b.startedAt, now)}`
+      $('.truck', el).innerHTML = truckSvg(AGENTS[b.agent]?.color ?? '#a3988b', b.kind, boxesFor(b, now))
+    })
+  }
+
+  // ───────── state / rendering ─────────
+  let state = null
+  let receivedAt = 0
+  // "now" on the publishing machine, advanced by the time since the snapshot arrived
+  const nowMs = () => Date.parse(state.now) + (Date.now() - receivedAt)
+  let lastMsgId = null
+  let tab = 'messages'
+  let selected = null
+  const seatEls = {}
+
+  function buildSeats() {
+    for (const name of ORDER) {
+      const role = ROLE_OF(name)
+      const seats = $(`.seats[data-role="${role}"]`)
+      const el = document.createElement('div')
+      el.className = 'agent idle'
+      el.tabIndex = 0
+      el.setAttribute('role', 'button')
+      el.dataset.name = name
+      el.innerHTML = `<div class="bubble"></div><div class="sprite">${agentSvg(name)}</div><div class="desk"></div>
+        <div class="name pixel">${esc(AGENTS[name].label)}</div><div class="model"></div>`
+      el.addEventListener('click', () => select(name))
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(name) } })
+      seats.appendChild(el)
+      seatEls[name] = el
+    }
+  }
+
+  function select(name) {
+    selected = selected === name ? null : name
+    renderDetail()
+  }
+
+  function renderDetail() {
+    const box = $('#detail')
+    const a = selected && state?.agents.find((x) => x.name === selected)
+    if (!a) { box.className = ''; box.innerHTML = ''; return }
+    const now = nowMs()
+    box.className = 'show'
+    box.innerHTML = `<div class="sprite">${agentSvg(a.name)}</div><div class="body">
+      <div class="title pixel">${esc(label(a.name))} <span class="chip">${esc(a.model)}</span></div>
+      <div class="meta">${a.busy ? `いま: ${esc(describe(a, state.tickets))}（${esc(elapsed(a.startedAt, now))}）` : 'いまは待機中'}
+        ${a.lastRunAt ? ` ・ 前回の起動: ${esc(ago(a.lastRunAt, now))}${a.lastExit ? `（${esc(a.lastExit)}）` : ''}` : ''}</div>
+      <pre>${a.lastResult ? esc(a.lastResult) : 'まだ報告はありません'}</pre></div>
+      <button type="button" aria-label="閉じる">×</button>`
+    $('button', box).onclick = () => { selected = null; renderDetail() }
+  }
+
+  function renderAgents() {
+    const now = nowMs()
+    for (const a of state.agents) {
+      const el = seatEls[a.name]
+      if (!el) continue
+      el.className = `agent ${a.busy ? 'busy' : 'idle'}`
+      $('.model', el).textContent = a.model === 'sonnet' ? 'Sonnet' : 'Opus'
+      $('.bubble', el).innerHTML = a.busy
+        ? `<span class="what">${esc(describe(a, state.tickets))}</span>${buildsOf(a.name).length ? `<span class="build">📦 ${esc(buildsOf(a.name).map((b) => BUILD[b.kind]?.name ?? b.kind).join('・'))}</span>` : ''}<span class="time">${esc(elapsed(a.startedAt, now))}<span class="typing"><i></i><i></i><i></i></span></span>`
+        : '<span class="zzz">z z</span>'
+      el.setAttribute('aria-label', `${label(a.name)}: ${a.busy ? describe(a, state.tickets) : '待機中'}`)
+    }
+  }
+
+  // Customers on screen: those an operator is talking to now, plus anyone the team wrote to in the last 30 minutes.
+  function currentCustomers() {
+    const now = nowMs()
+    const set = new Map()
+    for (const a of state.agents) if (a.busy && a.task?.startsWith('customer:')) set.set(a.task, true)
+    for (const m of state.messages) {
+      if (String(m.to).startsWith('customer:') && now - Date.parse(m.at) < 30 * 60000 && !set.has(m.to)) set.set(m.to, false)
+    }
+    return set
+  }
+
+  function renderCustomers() {
+    const box = $('#customers')
+    const list = currentCustomers()
+    if (!list.size) { box.innerHTML = '<div class="customer-empty">いまは<br>お話し中の<br>お客様はいません</div>'; return }
+    box.innerHTML = [...list].slice(0, 6).map(([key, talking]) => {
+      const owner = key === 'customer:owner'
+      return `<div class="customer${talking ? ' talking' : ''}" data-key="${esc(key)}">${personSvg(owner)}<span>${esc(owner ? 'オーナー' : '#' + key.slice(9))}</span></div>`
+    }).join('')
+  }
+
+  // Dashed lines: operator ↔ customer they are talking to, advisor ↔ the one who asked.
+  function renderLinks() {
+    const svg = $('#links')
+    const base = $('#rooms').getBoundingClientRect()
+    const center = (el, dy = 0) => {
+      const b = el.getBoundingClientRect()
+      return [b.left - base.left + b.width / 2, b.top - base.top + b.height / 2 + dy]
+    }
+    const paths = []
+    for (const a of state.agents) {
+      if (!a.busy || !a.task) continue
+      let from = null, to = null, color = '', text = ''
+      if (a.task.startsWith('customer:')) {
+        const c = $(`.customer[data-key="${CSS.escape(a.task)}"]`)
+        if (c) { from = center(c); to = center($('.sprite', seatEls[a.name]), 0); color = AGENTS[a.name].color; text = '会話中' }
+      } else if (a.task.startsWith('consult:')) {
+        const asker = a.task.split(':')[1]
+        if (seatEls[asker]) { from = center($('.sprite', seatEls[asker])); to = center($('.sprite', seatEls[a.name])); color = AGENTS[a.name].color; text = '相談中' }
+      }
+      if (!from) continue
+      const mx = (from[0] + to[0]) / 2, my = Math.min(from[1], to[1]) - 30
+      // the curve's midpoint (t = 0.5) of the quadratic, where the label goes
+      const lx = (from[0] + 2 * mx + to[0]) / 4, ly = (from[1] + 2 * my + to[1]) / 4
+      paths.push(`<path d="M${from[0]} ${from[1]} Q${mx} ${my} ${to[0]} ${to[1]}" stroke="${color}"/>
+        <text x="${lx}" y="${ly - 6}" text-anchor="middle">${text}</text>`)
+    }
+    svg.setAttribute('viewBox', `0 0 ${base.width} ${base.height}`)
+    svg.innerHTML = paths.join('')
+  }
+
+  // Where a message lands on screen.
+  function targetEl(to) {
+    if (seatEls[to]) return $('.sprite', seatEls[to])
+    if (String(to).startsWith('customer:')) {
+      const op = state.agents.find((a) => a.busy && a.task === to)
+      if (op) return $('.sprite', seatEls[op.name])
+      return $('#room-desk .room-title')
+    }
+    return null
+  }
+  const sourceEl = (from) => seatEls[from] ? $('.sprite', seatEls[from]) : $('#logo')
+
+  function flyEnvelope(m, delay) {
+    const fromEl = sourceEl(m.from), toEl = targetEl(m.to)
+    if (!fromEl || !toEl || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const office = $('#office')
+    const base = office.getBoundingClientRect()
+    const a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect()
+    const x0 = a.left - base.left + a.width / 2 - 11, y0 = a.top - base.top + 4
+    const x1 = b.left - base.left + b.width / 2 - 11, y1 = b.top - base.top + 4
+    const env = document.createElement('div')
+    env.className = 'envelope'
+    env.innerHTML = envelopeSvg(AGENTS[m.from]?.color ?? '#a3988b')
+    env.style.transform = `translate(${x0}px, ${y0}px)`
+    env.style.opacity = '0'
+    office.appendChild(env)
+    const lift = Math.min(y0, y1) - 60
+    const anim = env.animate([
+      { transform: `translate(${x0}px, ${y0}px) scale(.6)`, opacity: 0 },
+      { transform: `translate(${x0}px, ${y0 - 10}px) scale(1)`, opacity: 1, offset: .1 },
+      { transform: `translate(${(x0 + x1) / 2}px, ${lift}px) scale(1.1) rotate(-8deg)`, opacity: 1, offset: .55 },
+      { transform: `translate(${x1}px, ${y1}px) scale(.8)`, opacity: 1, offset: .92 },
+      { transform: `translate(${x1}px, ${y1}px) scale(.4)`, opacity: 0 },
+    ], { duration: 1600, delay, easing: 'ease-in-out', fill: 'both' })
+    anim.onfinish = () => env.remove()
+  }
+
+  function renderFeed(fresh) {
+    const list = $('#feed-list')
+    const now = nowMs()
+    const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 40
+    if (tab === 'log') {
+      const lines = state.log || []
+      list.innerHTML = lines.length
+        ? lines.map((l) => {
+          const m = String(l).match(/^(\S+)\s+(.*)$/)
+          const t = m && !isNaN(Date.parse(m[1])) ? hhmm(m[1]) : ''
+          return `<li><div class="msg log"><div class="head"><b>オーケストレーター</b><span class="t">${esc(t)}</span></div><div class="text">${esc(m && t ? m[2] : l)}</div></div></li>`
+        }).join('')
+        : '<li class="empty">記録はまだありません</li>'
+    } else {
+      const msgs = state.messages || []
+      list.innerHTML = msgs.length
+        ? msgs.map((m) => `<li class="${fresh.has(m.id) ? 'fresh' : ''}">
+            <div class="mini">${agentSvg(m.from)}</div>
+            <div class="msg"><div class="head"><b>${esc(label(m.from))}</b>→ <span>${esc(toLabel(m.to))}</span>
+              ${m.ticket ? `<span class="chip">${esc(m.ticket)}</span>` : ''}${m.readAt ? '' : '<span class="chip">未読</span>'}
+              <span class="t" title="${esc(m.at)}">${esc(hhmm(m.at))}・${esc(ago(m.at, now))}</span></div>
+            <div class="text">${esc(m.text)}</div></div></li>`).join('')
+        : '<li class="empty">まだメッセージはありません</li>'
+    }
+    if (atBottom || fresh.size) list.scrollTop = list.scrollHeight
+  }
+
+  function renderBoard() {
+    const now = nowMs()
+    const tickets = state.tickets || []
+    $('#ticket-count').textContent = `${tickets.filter((t) => !['released', 'dropped'].includes(t.status)).length} 件が進行中`
+    $('#kanban').innerHTML = COLUMNS.map((col) => {
+      const items = tickets.filter((t) => col.st.includes(t.status))
+        .sort((a, b) => (a.priority === 'high' ? -1 : 0) - (b.priority === 'high' ? -1 : 0) || Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+      return `<div class="col"><h3 class="pixel">${col.title}<span>${items.length}</span></h3>
+        ${items.map((t) => {
+          const last = t.history?.[t.history.length - 1]
+          return `<div class="tcard${['released', 'dropped'].includes(t.status) ? ' dim' : ''}" title="${esc(last ? `${label(last.by)}: ${last.text || ''}` : '')}">
+            <div class="top"><span class="id">${esc(t.id)}</span><span class="prio ${esc(t.priority)}">${t.priority === 'high' ? '急ぎ' : t.priority === 'low' ? 'ゆっくり' : 'ふつう'}</span>
+              ${t.reporterCount ? `<span>お客様 ${t.reporterCount}人</span>` : ''}</div>
+            <div class="ttl">${esc(t.title)}</div>
+            <div class="bottom">${t.engineer ? `<span class="mini">${agentSvg(t.engineer)}</span>${esc(label(t.engineer))}` : ''}
+              <span class="st ${esc(t.status)}">${esc(STATUS[t.status] ?? t.status)}</span><span>${esc(ago(t.updatedAt, now))}</span></div></div>`
+        }).join('') || ''}</div>`
+    }).join('')
+  }
+
+  function render() {
+    const fresh = new Set()
+    const msgs = state.messages || []
+    if (lastMsgId !== null) {
+      for (const m of msgs) if (m.id > lastMsgId) fresh.add(m.id)
+    }
+    lastMsgId = msgs.reduce((x, m) => Math.max(x, m.id), lastMsgId ?? 0)
+
+    $('#pause-pill').hidden = !state.paused
+    $('#conn-dot').className = `dot ${state.orchestratorAlive ? 'ok' : 'bad'}`
+    $('#conn-text').textContent = demo ? 'デモ表示' : state.orchestratorAlive ? 'オーケストレーター稼働中' : 'オーケストレーター停止中'
+    $('#updated').textContent = `更新 ${hhmm(state.now)}${PUBLIC ? '・公開版' : ''}`
+
+    renderAgents()
+    renderCustomers()
+    renderBoard()
+    renderDock()
+    renderFeed(fresh)
+    renderDetail()
+    renderLinks()
+    let i = 0
+    for (const m of msgs) if (fresh.has(m.id) && i < 6) flyEnvelope(m, 250 * i++)
+  }
+
+  // ───────── data ─────────
+  const demo = new URLSearchParams(location.search).has('demo')
+  // Opened from the local orchestrator → poll its API; anywhere else (the public page) → listen on Realtime.
+  const PUBLIC = !demo && !['127.0.0.1', 'localhost'].includes(location.hostname)
+  const banner = $('#banner')
+
+  function accept(next) {
+    state = next
+    receivedAt = Date.now()
+    banner.className = 'banner'
+    render()
+  }
+
+  async function poll() {
+    try {
+      if (demo) accept(demoState())
+      else {
+        const res = await fetch('/api/state', { cache: 'no-store' })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        accept(await res.json())
+      }
+    } catch (e) {
+      banner.className = 'banner show'
+      banner.textContent = `状態を読み込めませんでした（${e.message}）。オーケストレーターが動いているか確かめてください（npm run feedback:status）。`
+      $('#conn-dot').className = 'dot bad'
+      $('#conn-text').textContent = '接続できません'
+    }
+  }
+
+  // Demo data that changes every poll, so the page can be checked without the daemon (?demo).
+  let demoTick = 0
+  const demoMsgs = []
+  function demoState() {
+    demoTick++
+    const now = new Date()
+    const min = (m) => new Date(now - m * 60000).toISOString()
+    const script = [
+      ['operator-1', 'pm', 'T-14', '新しいチケット T-14「通話中にマイクが勝手にミュートになる」(operator-1)'],
+      ['pm', 'engineer-2', 'T-14', 'T-14 を割り当てました。src/renderer/net/rtc.ts の再接続処理から見てください'],
+      ['engineer-2', 'pm', 'T-13', 'T-13 できました。設定画面のスライダーの上限を 200% に広げ、保存値の検証も合わせました'],
+      ['pm', 'customer:a1b2c3', 'T-13', 'T-13「音量を200%まで上げたい」: ready — 次のアップデートで届きます'],
+      ['operator-2', 'pm', null, 'オーナーから「今夜はリリースを待って」とのことです'],
+      ['pm', 'customer:owner', null, '0.1.30 の準備ができています。クリックまわりを変えたので、手元で右クリックメニューを試してもらえますか？'],
+      ['engineer-1', 'pm', 'T-12', 'T-12 で、ウィンドウの位置の保存先を確認したいです（ブロック中）'],
+    ]
+    if (demoTick % 2 === 0) {
+      const [from, to, ticket, text] = script[(demoTick / 2 - 1) % script.length]
+      demoMsgs.push({ id: demoMsgs.length + 1, at: now.toISOString(), from, to, ticket, text, readAt: null })
+      if (demoMsgs.length > 1) demoMsgs[demoMsgs.length - 2].readAt = now.toISOString()
+    }
+    const phase = Math.floor(demoTick / 4) % 3
+    const ag = (name, model, busy, task, started, last) => ({
+      name, role: ROLE_OF(name), model, busy, task: busy ? task : null, startedAt: busy ? min(started) : null,
+      lastRunAt: min(last), lastExit: 'code=0', lastResult: `（デモ）${label(name)}の前回の報告です。チケットの状態を更新し、関係する人にボードで連絡しました。`,
+    })
+    return {
+      now: now.toISOString(), paused: false, orchestratorAlive: true,
+      agents: [
+        ag('operator-1', 'opus', true, 'customer:a1b2c3', 2, 10),
+        ag('operator-2', 'opus', phase !== 1, 'customer:owner', 1, 30),
+        ag('operator-3', 'opus', phase === 2, 'customer:9f8e7d', 0, 60),
+        ag('pm', 'opus', phase !== 2, phase === 0 ? 'pm:message' : 'pm:patrol', 4, 20),
+        ag('engineer-1', 'sonnet', true, 'T-12', 25, 90),
+        ag('engineer-2', 'sonnet', true, 'T-14', 6, 15),
+        ag('engineer-3', 'sonnet', false, null, 0, 120),
+        ag('engineer-4', 'opus', phase !== 2, 'T-16', 9, 40),
+        ag('advisor-1', 'opus', phase !== 0, 'consult:engineer-1:T-12', 1, 45),
+        ag('advisor-2', 'opus', phase === 0, 'consult:operator-3:general', 1, 200),
+      ],
+      tickets: [
+        { id: 'T-14', title: '通話中にマイクが勝手にミュートになる', status: 'in_progress', priority: 'high', engineer: 'engineer-2', reporterCount: 2, createdAt: min(40), updatedAt: min(6), history: [] },
+        { id: 'T-13', title: '音量を200%まで上げたい', status: 'ready', priority: 'normal', engineer: 'engineer-2', reporterCount: 1, createdAt: min(300), updatedAt: min(12), history: [] },
+        { id: 'T-12', title: '再起動するとウィンドウの位置が戻る', status: 'in_progress', priority: 'normal', engineer: 'engineer-1', reporterCount: 1, createdAt: min(200), updatedAt: min(25), history: [] },
+        { id: 'T-11', title: '吹き出しの文字が小さい', status: 'review', priority: 'low', engineer: 'engineer-3', reporterCount: 1, createdAt: min(500), updatedAt: min(50), history: [] },
+        { id: 'T-16', title: 'メンションの吹き出しをクリックで閉じられるようにする（UI）', status: 'in_progress', priority: 'normal', engineer: 'engineer-4', reporterCount: 1, createdAt: min(30), updatedAt: min(9), history: [] },
+        { id: 'T-15', title: 'アバターの表情を通話相手にも見せたい', status: 'open', priority: 'low', engineer: null, reporterCount: 1, createdAt: min(3), updatedAt: min(3), history: [] },
+        { id: 'T-10', title: '起動直後に音が二重に鳴る', status: 'needs-info', priority: 'normal', engineer: null, reporterCount: 1, createdAt: min(700), updatedAt: min(80), history: [] },
+        { id: 'T-9', title: 'チャット欄で絵文字が欠ける', status: 'assigned', priority: 'normal', engineer: 'engineer-3', reporterCount: 1, createdAt: min(800), updatedAt: min(100), history: [] },
+        { id: 'T-8', title: '共有画面が真っ黒になる', status: 'released', priority: 'high', engineer: 'engineer-1', reporterCount: 3, createdAt: min(2000), updatedAt: min(900), history: [] },
+      ],
+      builds: [
+        { agent: 'engineer-2', kind: 'rust', detail: 'cargo check', startedAt: min(1.5) },
+        ...(phase !== 2 ? [{ agent: 'engineer-4', kind: 'typecheck', detail: 'tsc', startedAt: min(0.4) }] : []),
+        ...(phase === 1 ? [{ agent: 'pm', kind: 'release', detail: 'npm run release', startedAt: min(3) }] : []),
+      ],
+      recentBuilds: phase === 2 ? [{ agent: 'pm', kind: 'release', detail: 'npm run release', startedAt: min(4), endedAt: new Date(now - 3000).toISOString() }] : [],
+      messages: demoMsgs.slice(-80),
+      log: [`${min(3)} ping received`, `${min(3)} operator-1: start customer:a1b2c3 (resume)`, `${min(1)} engineer-2: start T-14 (new session)`],
+    }
+  }
+
+  // ───────── wiring ─────────
+  buildSeats()
+  for (const b of document.querySelectorAll('.tabs button')) {
+    b.addEventListener('click', () => {
+      tab = b.dataset.tab
+      for (const x of document.querySelectorAll('.tabs button')) x.setAttribute('aria-selected', String(x === b))
+      if (state) renderFeed(new Set())
+    })
+  }
+  const THEME_KEY = 'team-dashboard-theme'
+  try { const t = localStorage.getItem(THEME_KEY); if (t) document.documentElement.dataset.theme = t } catch {}
+  $('#theme-btn').addEventListener('click', () => {
+    const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    const next = cur === 'dark' ? 'light' : 'dark'
+    document.documentElement.dataset.theme = next
+    try { localStorage.setItem(THEME_KEY, next) } catch {}
+  })
+  addEventListener('resize', () => state && renderLinks())
+
+  // The public page: the orchestrator broadcasts the (redacted) state every few seconds on 'team-status'.
+  const SUPABASE_URL = 'https://bnsugwjuvfhuxljnwkzn.supabase.co'
+  const SUPABASE_KEY = 'sb_publishable_yUcD54yAY5IosL_9LjunfQ_CfWxmiUI'
+  function listen() {
+    document.querySelector('.tabs button[data-tab="log"]').hidden = true
+    $('#conn-text').textContent = '最新の様子を待っています…'
+    banner.className = 'banner show'
+    banner.textContent = 'チームの様子を受け取っています（15 秒ほどかかることがあります）。'
+    const s = document.createElement('script')
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'
+    s.onload = () => {
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+      client.channel('team-status').on('broadcast', { event: 'state' }, ({ payload }) => accept(payload)).subscribe()
+    }
+    s.onerror = () => { banner.textContent = '読み込みに失敗しました。ページを開き直してください。' }
+    document.head.appendChild(s)
+    // Keep the timers moving between broadcasts, and say so when they stop coming.
+    setInterval(() => {
+      if (!state) return
+      render()
+      if (Date.now() - receivedAt > 60_000) {
+        $('#conn-dot').className = 'dot bad'
+        $('#conn-text').textContent = '更新が止まっています'
+      }
+    }, 5000)
+  }
+
+  if (PUBLIC) listen()
+  else {
+    poll()
+    setInterval(poll, demo ? 2500 : 3000)
+  }
+})()
+</script>
+</body>
+</html>
