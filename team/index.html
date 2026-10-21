@@ -132,6 +132,7 @@
   /* GitHub contributors sit in the dev room too, after the team's engineers */
   #room-dev .seats { row-gap: 14px; }
   .agent.remote .desk { background: #8a8f98; }
+  #room-adv .seats { height: auto; margin-top: 18px; }
   .agent .name a { color: inherit; text-decoration: none; }
 
   /* ───── loading dock (builds) ───── */
@@ -255,6 +256,9 @@
     margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 12px;
     color: var(--ink-2); max-height: 140px; overflow: auto;
   }
+  #detail .jobs { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: var(--ink-2); }
+  #detail .jobs li { margin: 2px 0; }
+  #detail .jobs a { color: var(--accent); }
   #detail button { margin-left: auto; background: none; border: 0; color: var(--ink-3); font-size: 18px; cursor: pointer; line-height: 1; }
 
   /* ───── feed ───── */
@@ -642,6 +646,7 @@
 
   function renderDetail() {
     const box = $('#detail')
+    if (selected?.startsWith('gh:')) return renderContributorDetail(box)
     const a = selected && state?.agents.find((x) => x.name === selected)
     if (!a) { box.className = ''; box.innerHTML = ''; return }
     const now = nowMs()
@@ -651,6 +656,30 @@
       <div class="meta">${a.busy ? `いま: ${esc(describe(a, state.tickets))}（${esc(elapsed(a.startedAt, now))}）` : 'いまは待機中'}
         ${a.lastRunAt ? ` ・ 前回の起動: ${esc(ago(a.lastRunAt, now))}${a.lastExit ? `（${esc(a.lastExit)}）` : ''}` : ''}</div>
       <pre>${a.lastResult ? esc(a.lastResult) : 'まだ報告はありません'}</pre></div>
+      <button type="button" aria-label="閉じる">×</button>`
+    $('button', box).onclick = () => { selected = null; renderDetail() }
+  }
+
+  const JOB_STATUS = { offered: 'お願い中（引き受け待ち）', working: '作業中', review: 'レビュー待ち', changes: '手直し中' }
+
+  // A GitHub contributor: what they hold now, their PRs and how the owner set them up.
+  function renderContributorDetail(box) {
+    const login = selected.slice(3)
+    const c = (state.contributors || []).find((x) => x.login === login)
+    if (!c) { box.className = ''; box.innerHTML = ''; return }
+    const now = nowMs()
+    const jobs = c.jobs?.length ? c.jobs : c.status && c.status !== 'waiting' ? [{ ticket: c.offered ?? c.ticket, status: c.status, pr: c.pr }] : []
+    const title = (id) => state.tickets?.find((t) => t.id === id)?.title ?? ''
+    const lines = jobs.map((j) => {
+      const pr = j.pr ? (j.pr.url && !PUBLIC ? `<a href="${esc(j.pr.url)}" target="_blank" rel="noopener">PR #${esc(j.pr.number)}</a>` : `PR #${esc(j.pr.number)}`) + (j.pr.draft ? '（下書き）' : '') : ''
+      return `<li><b>${esc(j.ticket ?? '')}</b> ${esc(title(j.ticket))} — ${esc(JOB_STATUS[j.status] ?? j.status)}${pr ? ` ・ ${pr}` : ''}</li>`
+    })
+    const setup = [c.model ? `モデル ${MODEL_NAME[c.model] ?? c.model}` : '', `同時に ${c.maxActive ?? 1} 件まで`, c.weight && c.weight !== 1 ? `配分 ×${c.weight}` : ''].filter(Boolean).join(' ・ ')
+    box.className = 'show'
+    box.innerHTML = `<div class="sprite">${agentSvg(selected)}</div><div class="body">
+      <div class="title pixel">@${esc(login)} <span class="chip">GitHub の協力者</span></div>
+      <div class="meta">${esc(setup)}${c.lastActiveAt ? ` ・ 最後の動き: ${esc(ago(c.lastActiveAt, now))}` : ''}</div>
+      ${lines.length ? `<ul class="jobs">${lines.join('')}</ul>` : '<pre>いまは担当しているチケットはありません</pre>'}</div>
       <button type="button" aria-label="閉じる">×</button>`
     $('button', box).onclick = () => { selected = null; renderDetail() }
   }
@@ -671,38 +700,53 @@
 
   const REMOTE_STATUS = { working: '作業中', review: 'レビュー待ち', changes: '手直し中', offered: '引き受け待ち', waiting: '待機中' }
 
+  // One seat per job a contributor runs in parallel (one idle seat when they have none).
+  // Seats are keyed gh:<login>|<ticket>; gh:<login> points at their first seat for envelopes.
   function renderRemote() {
     const box = $('.seats[data-role="engineer"]')
     const list = state.contributors || []
     const now = nowMs()
-    const keep = new Set(list.map((c) => 'gh:' + c.login))
+    const seats = []
+    for (const c of list) {
+      const jobs = c.jobs?.length ? c.jobs : c.status && c.status !== 'waiting'
+        ? [{ ticket: c.offered ?? c.ticket, status: c.status, pr: c.pr }] : [{ ticket: null, status: 'waiting', pr: null }]
+      jobs.forEach((j, i) => seats.push({ c, j, key: `gh:${c.login}|${j.ticket ?? i}`, n: jobs.length }))
+    }
+    const keep = new Set(seats.map((x) => x.key))
     for (const [k, el] of Object.entries(seatEls)) {
-      if (k.startsWith('gh:') && !keep.has(k)) {
-        el.remove()
+      if (!k.startsWith('gh:')) continue
+      if (k.includes('|') ? !keep.has(k) : true) {
+        if (k.includes('|')) el.remove()
         delete seatEls[k]
       }
     }
-    for (const c of list) {
+    for (const { c, j, key, n } of seats) {
       const name = 'gh:' + c.login
-      let el = seatEls[name]
+      let el = seatEls[key]
       if (!el) {
         el = document.createElement('div')
         el.dataset.name = name
+        el.tabIndex = 0
+        el.setAttribute('role', 'button')
         el.innerHTML = `<div class="bubble"></div><div class="sprite">${agentSvg(name)}</div><div class="desk"></div>
           <div class="name pixel"></div><div class="model"></div>`
+        el.addEventListener('click', (e) => { if (!e.target.closest('a')) select(name) })
+        el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(name) } })
         box.appendChild(el)
-        seatEls[name] = el
+        seatEls[key] = el
       }
-      const busy = c.status !== 'waiting'
+      seatEls[name] ??= el
+      const busy = j.status !== 'waiting'
       el.className = `agent remote ${busy ? 'busy' : 'idle'}`
-      const pr = c.pr ? `PR #${c.pr.number}${c.pr.draft ? '（下書き）' : ''}` : ''
-      const what = c.status === 'offered' ? `${c.offered ?? c.ticket} をお願い中` : c.status === 'review' ? `${pr} のレビュー待ち` : c.status === 'changes' ? `${pr || c.ticket} を手直し中`
-        : c.status === 'working' ? `${c.ticket ?? ''} を作業中${pr ? `（${pr}）` : ''}` : '待機中'
-      $('.name', el).innerHTML = c.pr?.url && !PUBLIC ? `<a href="${esc(c.pr.url)}" target="_blank" rel="noopener">@${esc(c.login)}</a>` : `@${esc(c.login)}`
+      const pr = j.pr ? `PR #${j.pr.number}${j.pr.draft ? '（下書き）' : ''}` : ''
+      const what = j.status === 'offered' ? `${j.ticket} をお願い中` : j.status === 'review' ? `${pr || j.ticket} のレビュー待ち` : j.status === 'changes' ? `${pr || j.ticket} を手直し中`
+        : j.status === 'working' ? `${j.ticket ?? ''} を作業中${pr ? `（${pr}）` : ''}` : '待機中'
+      const who = `@${esc(c.login)}${n > 1 ? `<small> ${seats.filter((x) => x.c === c).findIndex((x) => x.key === key) + 1}</small>` : ''}`
+      $('.name', el).innerHTML = j.pr?.url && !PUBLIC ? `<a href="${esc(j.pr.url)}" target="_blank" rel="noopener">${who}</a>` : who
       $('.bubble', el).innerHTML = busy
-        ? `<span class="what">${esc(what)}</span><span class="time">${esc(REMOTE_STATUS[c.status] ?? '')}・${esc(ago(c.lastActiveAt, now))}</span>`
+        ? `<span class="what">${esc(what)}</span><span class="time">${esc(REMOTE_STATUS[j.status] ?? '')}・${esc(ago(c.lastActiveAt, now))}</span>`
         : '<span class="zzz">z z</span>'
-      $('.model', el).textContent = c.weight && c.weight !== 1 ? `GitHub・配分 ×${c.weight}` : 'GitHub'
+      $('.model', el).textContent = ['GitHub', c.model ? MODEL_NAME[c.model] ?? c.model : '', c.weight && c.weight !== 1 ? `配分 ×${c.weight}` : ''].filter(Boolean).join('・')
       el.setAttribute('aria-label', `@${c.login}: ${what}`)
     }
   }
@@ -952,6 +996,11 @@
         { id: 'T-8', title: '共有画面が真っ黒になる', status: 'released', priority: 'high', engineer: 'engineer-1', reporterCount: 3, createdAt: min(2000), updatedAt: min(900), history: [] },
       ],
       contributors: [
+        { login: 'kuma', status: 'working', model: 'opus', maxActive: 3, lastActiveAt: min(1), jobs: [
+          { ticket: 'T-21', status: 'working', pr: null },
+          { ticket: 'T-22', status: 'review', pr: { number: 61, title: '通知の文言', draft: false, url: '#' } },
+          { ticket: 'T-23', status: phase === 1 ? 'changes' : 'working', pr: { number: 62, title: '設定の並び', draft: true, url: '#' } },
+        ] },
         { login: 'mika-dev', status: phase === 0 ? 'working' : 'review', ticket: 'T-17', pr: { number: 52, title: '吹き出しの影を少し濃くする', draft: phase === 0, url: '#' }, lastActiveAt: min(2) },
         { login: 'hana', status: 'offered', offered: 'T-19', weight: 2, ticket: 'T-19', pr: null, lastActiveAt: min(1) },
         { login: 'toru', status: 'changes', ticket: 'T-18', pr: { number: 49, title: 'チャット欄の絵文字の欠けを直す', draft: false, url: '#' }, lastActiveAt: min(14) },
