@@ -113,7 +113,7 @@
   .rooms {
     position: relative; display: grid; gap: 12px; padding: 12px 16px 4px;
     grid-template-columns: 150px repeat(3, minmax(0, 1fr));
-    grid-template-areas: "cust desk desk pm" "adv adv dev dev" "dock dock dock dock";
+    grid-template-areas: "cust desk desk pm" "adv adv dev dev" "remote remote remote remote" "dock dock dock dock";
   }
   .room {
     position: relative; border-radius: 12px; padding: 8px 10px 10px; min-height: 196px;
@@ -129,6 +129,11 @@
   #room-adv { grid-area: adv; }
   #room-dev { grid-area: dev; }
   #room-dock { grid-area: dock; min-height: 0; }
+  #room-remote { grid-area: remote; min-height: 0; }
+  #room-remote .seats { justify-content: flex-start; gap: 18px; min-height: 150px; }
+  .remote-empty { color: var(--ink-3); font-size: 12px; padding: 18px 6px; font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; }
+  .remote-empty a { color: var(--accent); }
+  .agent .name a { color: inherit; text-decoration: none; }
 
   /* ───── loading dock (builds) ───── */
   .lanes { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
@@ -310,7 +315,7 @@
     header { padding: 12px 16px; }
     main { padding: 12px 16px 24px; gap: 12px; }
     .banner { margin: 12px 16px 0; }
-    .rooms { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cust" "desk" "pm" "dev" "adv" "dock"; padding: 12px; }
+    .rooms { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cust" "desk" "pm" "dev" "adv" "remote" "dock"; padding: 12px; }
     .lane .truck { transform: scale(.72); transform-origin: right bottom; }
     .lane .tag { right: 140px; }
     @keyframes carry {
@@ -368,6 +373,10 @@
       <div class="room" id="room-dev">
         <div class="room-title pixel">開発ルーム <span class="sub">それぞれの worktree で実装（UI は UIエンジニア）</span></div>
         <div class="seats" data-role="engineer"></div>
+      </div>
+      <div class="room" id="room-remote">
+        <div class="room-title pixel">リモート席 <span class="sub">GitHub の Pull Request で手伝ってくれる人たち</span></div>
+        <div class="seats" id="remote-seats"></div>
       </div>
       <div class="room" id="room-dock">
         <div class="room-title pixel">出荷場 <span class="sub">型チェック・Rust・画面のビルドと、リリースの積み込み</span></div>
@@ -442,6 +451,8 @@
     } else if (acc === 'beret') {
       s += r(3, -2, 8, 2, '#b8323f') + r(2, -1, 3, 1, '#b8323f') + r(7, -3, 1, 1, '#b8323f')
       s += r(14, 1, 1, 4, '#8a6a48') + r(14, 0, 1, 1, '#e8eef5') + r(13.5, -1, 2, 1.2, '#4f9dde')  // paintbrush
+    } else if (acc === 'laptop') {
+      s += r(3, 4.5, 8, 2.5, '#5b6470') + r(4, 5, 6, 1.5, '#9fd3ff') + r(1.5, 7, 11, 1, '#c9ced6')
     } else if (acc === 'glasses') {
       const g = '#2b2b2b'
       for (const x0 of [3, 8]) s += r(x0, 1, 3, 1, g) + r(x0, 4, 3, 1, g) + r(x0, 2, 1, 2, g) + r(x0 + 2, 2, 1, 2, g)
@@ -450,9 +461,18 @@
     }
     return `<svg viewBox="-1 -4 18 14" shape-rendering="crispEdges" aria-hidden="true">${s}</svg>`
   }
+  // gh:<login> → a colour of its own (same login, same colour)
+  function ghColor(login) {
+    let h = 0
+    for (const ch of login) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+    return `hsl(${h % 360} 55% 58%)`
+  }
   const agentSvg = (name) => {
     const a = AGENTS[name]
-    return a ? clawd(a.color, a.acc) : clawd('#c9c2b8', '')
+    if (a) return clawd(a.color, a.acc)
+    if (String(name).startsWith('gh:')) return clawd(ghColor(name.slice(3)), 'laptop')
+    if (name === 'github') return clawd('#8a8f98', 'laptop')
+    return clawd('#c9c2b8', '')
   }
   // A plain round person for the customers.
   const personSvg = (owner) => `<svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">
@@ -465,7 +485,8 @@
   // ───────── helpers ─────────
   const $ = (s, el = document) => el.querySelector(s)
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-  const label = (n) => AGENTS[n]?.label ?? (n === 'human' ? 'ひと' : n === 'orchestrator' ? 'オーケストレーター' : n)
+  const label = (n) => AGENTS[n]?.label ?? (n === 'human' ? 'ひと' : n === 'orchestrator' ? 'オーケストレーター' : n === 'github' ? 'GitHub で募集中'
+    : String(n).startsWith('gh:') ? '@' + n.slice(3) : n)
   function custLabel(to) {
     const id = String(to).slice('customer:'.length)
     return id === 'owner' ? 'オーナー' : `お客様 #${id}`
@@ -653,6 +674,49 @@
     }
   }
 
+  const REMOTE_STATUS = { working: '作業中', review: 'レビュー待ち', changes: '手直し中', waiting: '待機中' }
+
+  function renderRemote() {
+    const box = $('#remote-seats')
+    const list = state.contributors || []
+    const now = nowMs()
+    if (!list.length) {
+      for (const k of Object.keys(seatEls)) if (k.startsWith('gh:')) delete seatEls[k]
+      box.innerHTML = '<div class="remote-empty">ほかの PC から GitHub の Pull Request で手伝ってくれる人が、ここに座ります。</div>'
+      return
+    }
+    if (box.querySelector('.remote-empty')) box.innerHTML = ''
+    const keep = new Set(list.map((c) => 'gh:' + c.login))
+    for (const [k, el] of Object.entries(seatEls)) {
+      if (k.startsWith('gh:') && !keep.has(k)) {
+        el.remove()
+        delete seatEls[k]
+      }
+    }
+    for (const c of list) {
+      const name = 'gh:' + c.login
+      let el = seatEls[name]
+      if (!el) {
+        el = document.createElement('div')
+        el.dataset.name = name
+        el.innerHTML = `<div class="bubble"></div><div class="sprite">${agentSvg(name)}</div><div class="desk"></div>
+          <div class="name pixel"></div><div class="model">GitHub</div>`
+        box.appendChild(el)
+        seatEls[name] = el
+      }
+      const busy = c.status !== 'waiting'
+      el.className = `agent ${busy ? 'busy' : 'idle'}`
+      const pr = c.pr ? `PR #${c.pr.number}${c.pr.draft ? '（下書き）' : ''}` : ''
+      const what = c.status === 'review' ? `${pr} のレビュー待ち` : c.status === 'changes' ? `${pr || c.ticket} を手直し中`
+        : c.status === 'working' ? `${c.ticket ?? ''} を作業中${pr ? `（${pr}）` : ''}` : '待機中'
+      $('.name', el).innerHTML = c.pr?.url && !PUBLIC ? `<a href="${esc(c.pr.url)}" target="_blank" rel="noopener">@${esc(c.login)}</a>` : `@${esc(c.login)}`
+      $('.bubble', el).innerHTML = busy
+        ? `<span class="what">${esc(what)}</span><span class="time">${esc(REMOTE_STATUS[c.status] ?? '')}・${esc(ago(c.lastActiveAt, now))}</span>`
+        : '<span class="zzz">z z</span>'
+      el.setAttribute('aria-label', `@${c.login}: ${what}`)
+    }
+  }
+
   // Customers on screen: those an operator is talking to now, plus anyone the team wrote to in the last 30 minutes.
   function currentCustomers() {
     const now = nowMs()
@@ -782,7 +846,7 @@
             <div class="top"><span class="id">${esc(t.id)}</span><span class="prio ${esc(t.priority)}">${t.priority === 'high' ? '急ぎ' : t.priority === 'low' ? 'ゆっくり' : 'ふつう'}</span>
               ${t.reporterCount ? `<span>お客様 ${t.reporterCount}人</span>` : ''}</div>
             <div class="ttl">${esc(t.title)}</div>
-            <div class="bottom">${t.engineer ? `<span class="mini">${agentSvg(t.engineer)}</span>${esc(label(t.engineer))}` : ''}
+            <div class="bottom">${t.engineer ? `<span class="mini">${agentSvg(t.engineer)}</span>${esc(label(t.engineer))}` : ''}${t.pr ? `<span class="chip">#${esc(t.pr.number)}</span>` : ''}
               <span class="st ${esc(t.status)}">${esc(STATUS[t.status] ?? t.status)}</span><span>${esc(ago(t.updatedAt, now))}</span></div></div>`
         }).join('') || ''}</div>`
     }).join('')
@@ -802,6 +866,7 @@
     $('#updated').textContent = `更新 ${hhmm(state.now)}${PUBLIC ? '・公開版' : ''}`
 
     renderAgents()
+    renderRemote()
     renderCustomers()
     renderBoard()
     renderDock()
@@ -856,6 +921,7 @@
       ['operator-2', 'pm', null, 'オーナーから「今夜はリリースを待って」とのことです'],
       ['pm', 'customer:owner', null, '0.1.30 の準備ができています。クリックまわりを変えたので、手元で右クリックメニューを試してもらえますか？'],
       ['engineer-1', 'pm', 'T-12', 'T-12 で、ウィンドウの位置の保存先を確認したいです（ブロック中）'],
+      ['gh:mika-dev', 'pm', 'T-17', 'PR #52（T-17）がレビュー待ちです: 吹き出しの影を少し濃くする'],
     ]
     if (demoTick % 2 === 0) {
       const [from, to, ticket, text] = script[(demoTick / 2 - 1) % script.length]
@@ -887,10 +953,17 @@
         { id: 'T-12', title: '再起動するとウィンドウの位置が戻る', status: 'in_progress', priority: 'normal', engineer: 'engineer-1', reporterCount: 1, createdAt: min(200), updatedAt: min(25), history: [] },
         { id: 'T-11', title: '吹き出しの文字が小さい', status: 'review', priority: 'low', engineer: 'engineer-3', reporterCount: 1, createdAt: min(500), updatedAt: min(50), history: [] },
         { id: 'T-16', title: 'メンションの吹き出しをクリックで閉じられるようにする（UI）', status: 'in_progress', priority: 'normal', engineer: 'engineer-4', reporterCount: 1, createdAt: min(30), updatedAt: min(9), history: [] },
+        { id: 'T-17', title: '吹き出しの影を少し濃くする', status: phase === 0 ? 'in_progress' : 'review', priority: 'low', engineer: 'gh:mika-dev', pr: { number: 52, draft: phase === 0 }, reporterCount: 1, createdAt: min(60), updatedAt: min(2), history: [] },
+        { id: 'T-18', title: 'チャット欄の絵文字の欠けを直す', status: 'changes', priority: 'normal', engineer: 'gh:toru', pr: { number: 49, draft: false }, reporterCount: 1, createdAt: min(200), updatedAt: min(14), history: [] },
+        { id: 'T-19', title: '設定の文言をそろえる', status: 'assigned', priority: 'low', engineer: 'github', reporterCount: 0, createdAt: min(30), updatedAt: min(30), history: [] },
         { id: 'T-15', title: 'アバターの表情を通話相手にも見せたい', status: 'open', priority: 'low', engineer: null, reporterCount: 1, createdAt: min(3), updatedAt: min(3), history: [] },
         { id: 'T-10', title: '起動直後に音が二重に鳴る', status: 'needs-info', priority: 'normal', engineer: null, reporterCount: 1, createdAt: min(700), updatedAt: min(80), history: [] },
         { id: 'T-9', title: 'チャット欄で絵文字が欠ける', status: 'assigned', priority: 'normal', engineer: 'engineer-3', reporterCount: 1, createdAt: min(800), updatedAt: min(100), history: [] },
         { id: 'T-8', title: '共有画面が真っ黒になる', status: 'released', priority: 'high', engineer: 'engineer-1', reporterCount: 3, createdAt: min(2000), updatedAt: min(900), history: [] },
+      ],
+      contributors: [
+        { login: 'mika-dev', status: phase === 0 ? 'working' : 'review', ticket: 'T-17', pr: { number: 52, title: '吹き出しの影を少し濃くする', draft: phase === 0, url: '#' }, lastActiveAt: min(2) },
+        { login: 'toru', status: 'changes', ticket: 'T-18', pr: { number: 49, title: 'チャット欄の絵文字の欠けを直す', draft: false, url: '#' }, lastActiveAt: min(14) },
       ],
       builds: [
         { agent: 'engineer-2', kind: 'rust', detail: 'cargo check', startedAt: min(1.5) },
