@@ -113,7 +113,7 @@
   .rooms {
     position: relative; display: grid; gap: 12px; padding: 12px 16px 4px;
     grid-template-columns: 150px repeat(3, minmax(0, 1fr));
-    grid-template-areas: "cust desk desk pm" "adv adv lead lead" "dev dev dev dev" "dock dock dock dock";
+    grid-template-areas: "cust desk desk pm" "lead lead lead lead" "dev dev dev dev" "dock dock dock dock";
   }
   .room {
     position: relative; border-radius: 12px; padding: 8px 10px 10px; min-height: 196px;
@@ -322,7 +322,7 @@
     header { padding: 12px 16px; }
     main { padding: 12px 16px 24px; gap: 12px; }
     .banner { margin: 12px 16px 0; }
-    .rooms { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cust" "desk" "pm" "lead" "dev" "adv" "dock"; padding: 12px; }
+    .rooms { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cust" "desk" "pm" "lead" "dev" "dock"; padding: 12px; }
     .lane .truck { transform: scale(.72); transform-origin: right bottom; }
     .lane .tag { right: 140px; }
     @keyframes carry {
@@ -373,10 +373,6 @@
         <div class="room-title pixel">PM デスク <span class="sub">やる・やらないを決めて、リーダーに割り振る</span></div>
         <div class="seats" data-role="pm"></div>
       </div>
-      <div class="room" id="room-adv">
-        <div class="room-title pixel">相談室 <span class="sub">なんでも聞ける</span></div>
-        <div class="seats" data-role="advisor"></div>
-      </div>
       <div class="room" id="room-lead">
         <div class="room-title pixel">開発リーダー <span class="sub">作り方を決めて、作る人に頼み、レビューして入れる</span></div>
         <div class="seats" data-role="lead"></div>
@@ -421,23 +417,20 @@
 (() => {
   // ───────── characters ─────────
   const AGENTS = {
-    'operator-1': { label: 'オペレーター1', color: '#4f9dde', acc: 'headset' },
-    'operator-2': { label: 'オペレーター2', color: '#3fb8a9', acc: 'headset' },
-    'operator-3': { label: 'オペレーター3', color: '#7bc950', acc: 'headset' },
-    'pm':         { label: 'PM',           color: '#d97757', acc: 'tie' },
-    'release':    { label: 'リリース担当', color: '#e0a03a', acc: 'vest' },
-    'lead-1':     { label: 'リーダー1',     color: '#c2453b', acc: 'cap' },
-    'lead-2':     { label: 'リーダー2',     color: '#1f9e86', acc: 'cap' },
-    'engineer-1': { label: 'エンジニア1',   color: '#9b7be0', acc: 'hardhat' },
-    'engineer-2': { label: 'エンジニア2',   color: '#e57ab3', acc: 'hardhat' },
-    'engineer-3': { label: 'エンジニア3',   color: '#b5835a', acc: 'hardhat' },
-    'engineer-4': { label: 'UIエンジニア',  color: '#e8b83a', acc: 'beret' },
-    'advisor-1':  { label: 'シニア1',       color: '#8a8f98', acc: 'glasses' },
-    'advisor-2':  { label: 'シニア2',       color: '#5b6cc4', acc: 'glasses' },
+    'operator-1': { label: 'ひより',   color: '#4f9dde', acc: 'headset' },
+    'operator-2': { label: 'こはる',   color: '#3fb8a9', acc: 'headset' },
+    'operator-3': { label: 'つむぎ',   color: '#7bc950', acc: 'headset' },
+    'pm':         { label: 'さくら',   color: '#f08fb0', acc: 'tie' },
+    'release':    { label: 'みのり',   color: '#e0a03a', acc: 'vest' },
+    'lead-1':     { label: 'あおい',   color: '#4a7fd6', acc: 'cap' },
+    'lead-suzu':  { label: 'すず',     color: '#1f9e86', acc: 'cap' },
+    'engineer-1': { label: 'そら',     color: '#9b7be0', acc: 'hardhat' },
+    'engineer-2': { label: 'ゆず',     color: '#e57ab3', acc: 'hardhat' },
+    'engineer-3': { label: 'もも',     color: '#b5835a', acc: 'hardhat' },
   }
   const ORDER = Object.keys(AGENTS)
   const MODEL_NAME = { opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku' }
-  const ROLE_OF = (n) => n === 'pm' ? 'pm' : n.replace(/-\d+$/, '')
+  const ROLE_OF = (n) => n === 'pm' ? 'pm' : n === 'lead-suzu' ? 'lead' : n.replace(/-\d+$/, '')
 
   const r = (x, y, w, h, fill, cls = '') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"${cls ? ` class="${cls}"` : ''}/>`
 
@@ -548,6 +541,8 @@
     if (t.startsWith('customer:')) return `${custLabel(t)}と会話中`
     if (t === 'pm:patrol') return '見回り中（進み具合とリリースの確認）'
     if (t === 'pm:message') return '届いたメッセージを確認中'
+    if (t === 'pm:remote') return '判断を待っているチケットがあります'
+    if (t === 'lead:remote') return '任されたチケットを作っています'
     if (t === 'release:patrol') return '見回り中（リリース待ちと autofix の確認）'
     if (t === 'release:message') return '完成報告・リリースの連絡を確認中'
     if (t === 'lead:patrol') return '見回り中（任されたチケットの進み具合）'
@@ -742,7 +737,7 @@
       const el = seatEls[a.name]
       if (!el) continue
       el.className = `agent ${a.busy ? 'busy' : 'idle'}`
-      $('.model', el).textContent = MODEL_NAME[a.model] ?? a.model
+      $('.model', el).textContent = a.remote ? `${a.remote} さんの PC` : MODEL_NAME[a.model] ?? a.model
       $('.bubble', el).innerHTML = a.busy
         ? `<span class="what">${esc(describe(a, state.tickets))}</span>${buildsOf(a.name).length ? `<span class="build">📦 ${esc(buildsOf(a.name).map((b) => BUILD[b.kind]?.name ?? b.kind).join('・'))}</span>` : ''}<span class="time">${esc(elapsed(a.startedAt, now))}<span class="typing"><i></i><i></i><i></i></span></span>`
         : '<span class="zzz">z z</span>'
@@ -793,7 +788,7 @@
       const pr = j.pr ? `PR #${j.pr.number}${j.pr.draft ? '（下書き）' : ''}` : ''
       const what = j.status === 'offered' ? `${j.ticket} をお願い中` : j.status === 'review' ? `${pr || j.ticket} のレビュー待ち` : j.status === 'changes' ? `${pr || j.ticket} を手直し中`
         : j.status === 'working' ? `${j.ticket ?? ''} を作業中${pr ? `（${pr}）` : ''}` : '待機中'
-      const who = `@${esc(c.login)}${n > 1 ? `<small> ${seats.filter((x) => x.c === c).findIndex((x) => x.key === key) + 1}</small>` : ''}`
+      const who = `${c.displayName ? `${esc(c.displayName)} ` : ''}@${esc(c.login)}${n > 1 ? `<small> ${seats.filter((x) => x.c === c).findIndex((x) => x.key === key) + 1}</small>` : ''}`
       $('.name', el).innerHTML = j.pr?.url && !PUBLIC ? `<a href="${esc(j.pr.url)}" target="_blank" rel="noopener">${who}</a>` : who
       $('.bubble', el).innerHTML = busy
         ? `<span class="what">${esc(what)}</span><span class="time">${esc(REMOTE_STATUS[j.status] ?? '')}・${esc(ago(c.lastActiveAt, now))}</span>`
@@ -1025,23 +1020,20 @@
         ag('operator-1', 'haiku', true, 'customer:a1b2c3', 2, 10),
         ag('operator-2', 'haiku', phase !== 1, 'customer:owner', 1, 30),
         ag('operator-3', 'haiku', phase === 2, 'customer:9f8e7d', 0, 60),
-        ag('pm', 'opus', phase !== 2, phase === 0 ? 'pm:message' : 'pm:patrol', 4, 20),
+        { ...ag('pm', 'opus', phase !== 2, 'pm:remote', 4, 20), remote: 'totegamma' },
         ag('release', 'opus', phase === 1, 'release:message', 3, 25),
         ag('lead-1', 'opus', true, phase === 1 ? 'lead:patrol' : 'lead:message', 3, 15),
-        ag('lead-2', 'opus', phase !== 0, 'lead:message', 2, 40),
+        { ...ag('lead-suzu', 'opus', true, 'lead:remote', 20, 60), remote: 'totegamma' },
         ag('engineer-1', 'haiku', true, 'T-12', 25, 90),
         ag('engineer-2', 'haiku', true, 'T-14', 6, 15),
         ag('engineer-3', 'haiku', false, null, 0, 120),
-        ag('engineer-4', 'opus', phase !== 2, 'T-16', 9, 40),
-        ag('advisor-1', 'opus', phase !== 0, 'consult:engineer-1:T-12', 1, 45),
-        ag('advisor-2', 'opus', phase === 0, 'consult:operator-3:general', 1, 200),
       ],
       tickets: [
         { id: 'T-14', title: '通話中にマイクが勝手にミュートになる', status: 'in_progress', priority: 'high', engineer: 'engineer-2', reporterCount: 2, createdAt: min(40), updatedAt: min(6), history: [] },
         { id: 'T-13', title: '音量を200%まで上げたい', status: 'ready', priority: 'normal', engineer: 'engineer-2', reporterCount: 1, createdAt: min(300), updatedAt: min(12), history: [] },
         { id: 'T-12', title: '再起動するとウィンドウの位置が戻る', status: 'in_progress', priority: 'normal', engineer: 'engineer-1', reporterCount: 1, createdAt: min(200), updatedAt: min(25), history: [] },
         { id: 'T-11', title: '吹き出しの文字が小さい', status: 'review', priority: 'low', engineer: 'engineer-3', reporterCount: 1, createdAt: min(500), updatedAt: min(50), history: [] },
-        { id: 'T-16', title: 'メンションの吹き出しをクリックで閉じられるようにする（UI）', status: 'in_progress', priority: 'normal', engineer: 'engineer-4', reporterCount: 1, createdAt: min(30), updatedAt: min(9), history: [] },
+        { id: 'T-16', title: 'メンションの吹き出しをクリックで閉じられるようにする（UI）', status: 'in_progress', priority: 'normal', engineer: 'gh:totegamma', reporterCount: 1, createdAt: min(30), updatedAt: min(9), history: [] },
         { id: 'T-17', title: '吹き出しの影を少し濃くする', status: phase === 0 ? 'in_progress' : 'review', priority: 'low', engineer: 'gh:mika-dev', pr: { number: 52, draft: phase === 0 }, reporterCount: 1, createdAt: min(60), updatedAt: min(2), history: [] },
         { id: 'T-18', title: 'チャット欄の絵文字の欠けを直す', status: 'changes', priority: 'normal', engineer: 'gh:toru', pr: { number: 49, draft: false }, reporterCount: 1, createdAt: min(200), updatedAt: min(14), history: [] },
         { id: 'T-19', title: '設定の文言をそろえる', status: 'assigned', priority: 'low', engineer: 'github', reporterCount: 0, createdAt: min(30), updatedAt: min(30), history: [] },
@@ -1062,7 +1054,7 @@
       ],
       builds: [
         { agent: 'engineer-2', kind: 'rust', detail: 'cargo check', startedAt: min(1.5) },
-        ...(phase !== 2 ? [{ agent: 'engineer-4', kind: 'typecheck', detail: 'tsc', startedAt: min(0.4) }] : []),
+        ...(phase !== 2 ? [{ agent: 'engineer-3', kind: 'typecheck', detail: 'tsc', startedAt: min(0.4) }] : []),
         ...(phase === 1 ? [{ agent: 'release', kind: 'release', detail: 'npm run release', startedAt: min(3) }] : []),
       ],
       recentBuilds: phase === 2 ? [{ agent: 'release', kind: 'release', detail: 'npm run release', startedAt: min(4), endedAt: new Date(now - 3000).toISOString() }] : [],
