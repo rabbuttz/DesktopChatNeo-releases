@@ -169,6 +169,30 @@
   .lane.parked { height: 70px; background: linear-gradient(to bottom, transparent 0 48px, var(--road) 48px 70px); }
   .lane.parked .truck { bottom: 8px; transform: scale(.7); transform-origin: right bottom; opacity: .7; }
   .lane.parked .tag { top: 24px; left: 12px; color: var(--ink-3); }
+  /* the release being shipped (ship.mjs run): a taller lane with its steps */
+  .lane.ship {
+    height: 126px;
+    background:
+      linear-gradient(90deg, var(--road-line) 0 18px, transparent 18px 36px) 0 114px / 36px 2px repeat-x,
+      linear-gradient(to bottom, transparent 0 104px, var(--road) 104px 126px);
+  }
+  .lane .steps { position: absolute; left: 82px; top: 28px; right: 196px; display: flex; flex-wrap: wrap; gap: 4px; font-size: 11px; }
+  .lane .steps span {
+    padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-3); white-space: nowrap;
+    font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+  }
+  .lane .steps .done { color: var(--ok); border-color: transparent; }
+  .lane .steps .done::before { content: '✓ '; }
+  .lane .steps .now { color: #fff; background: var(--accent); border-color: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .65; } }
+  .lane.failed { height: auto; min-height: 70px; background: none; border: 1px solid var(--bad); }
+  .lane.failed .tag { position: static; padding: 10px 12px; white-space: normal; color: var(--bad); }
+  .lane.failed .tag small { display: block; margin: 4px 0 0; color: var(--ink-2); white-space: pre-wrap; }
+  @media (max-width: 640px) {
+    .lane .tag, .lane .steps { right: 12px; }
+    .lane.ship { height: 156px; background: linear-gradient(to bottom, transparent 0 134px, var(--road) 134px 156px); }
+    .lane.ship .truck { display: none; }
+  }
   /* to the truck carrying a box, back without one (turned around) */
   @keyframes carry {
     0% { left: 74px; transform: scaleX(1); }
@@ -592,11 +616,53 @@
       ${r(4, 32, 5, 4, '#2b2620')}${r(5, 33, 3, 2, '#8a8f98')}${r(31, 32, 5, 4, '#2b2620')}${r(32, 33, 3, 2, '#8a8f98')}</svg>`
   }
 
+  // The steps of ship.mjs run, in order (state.shipping.stage is one of the keys).
+  const SHIP_STEPS = [
+    { key: 'lock', name: '鍵を取る' },
+    { key: 'version', name: '版と更新履歴' },
+    { key: 'check', name: '確認' },
+    { key: 'build', name: 'ビルド・署名・アップロード' },
+    { key: 'push', name: 'autofix と master に反映' },
+    { key: 'books', name: 'チケットを「リリース済み」に' },
+  ]
+  const shipStepName = (key) => SHIP_STEPS.find((s) => s.key === key)?.name ?? key
+  // Boxes on the truck: one per ticket, loaded as the steps go by.
+  function shipBoxes(sh) {
+    const total = Math.min(12, Math.max(1, sh.tickets?.length ?? 1))
+    const i = SHIP_STEPS.findIndex((s) => s.key === sh.stage)
+    return Math.max(1, Math.round(total * (Math.max(0, i) + 1) / SHIP_STEPS.length))
+  }
+  function shipDetail(sh, now) {
+    const b = (state.builds || []).find((x) => x.agent === 'release')
+    const check = sh.stage === 'check' && sh.check ? ` ${sh.check.done}/${sh.check.total}` : ''
+    return `${(sh.tickets || []).length} 件・${shipStepName(sh.stage)}${check}${b?.detail ? `（${b.detail}）` : ''}・${elapsed(sh.startedAt, now)}`
+  }
+  const shipSteps = (sh) => {
+    const i = SHIP_STEPS.findIndex((s) => s.key === sh.stage)
+    return SHIP_STEPS.map((s, j) => `<span class="${j < i ? 'done' : j === i ? 'now' : ''}">${esc(s.name)}</span>`).join('')
+  }
+
   function renderDock() {
     const box = $('#lanes')
     const now = nowMs()
     const lanes = []
+    const sh = state.shipping
+    if (sh) {
+      const k = BUILD.release
+      lanes.push(`<div class="lane ship" style="--trip:2.4s">
+        <div class="shed">${shedSvg()}</div>
+        <div class="tag"><b>${esc(label('release'))}</b> ${esc(sh.version ? `${sh.version} を出荷中` : '出荷の準備中')}<small>${esc(shipDetail(sh, now))}</small></div>
+        <div class="steps">${shipSteps(sh)}</div>
+        <div class="porter"><div class="body">${agentSvg('release')}</div><div class="box" style="background:${k.color}">${k.box}</div></div>
+        <div class="truck">${truckSvg(AGENTS.release.color, 'release', shipBoxes(sh))}</div></div>`)
+    }
+    const err = state.release?.lastShipError
+    if (!sh && err && now - Date.parse(err.at) < 30 * 60_000) {
+      lanes.push(`<div class="lane failed"><div class="tag"><b>${esc(label('release'))}</b> ${esc(err.version ?? '')} の出荷が「${esc(shipStepName(err.stage))}」で止まりました（${esc(ago(err.at, now))}）<small>${esc(err.message || '')}</small></div></div>`)
+    }
     for (const b of state.builds || []) {
+      if (sh && b.agent === 'release') continue // shown in the shipping lane
+
       const k = BUILD[b.kind] ?? BUILD.bundle
       lanes.push(`<div class="lane" style="--trip:${b.kind === 'release' ? '2.4s' : '3.2s'}">
         <div class="shed">${shedSvg()}</div>
@@ -608,7 +674,7 @@
     for (const b of state.recentBuilds || []) {
       if (b.kind !== 'release' || now - Date.parse(b.endedAt) > 25_000) continue
       lanes.push(`<div class="lane leaving"><div class="shed">${shedSvg()}</div>
-        <div class="tag"><b>${esc(label(b.agent))}</b> 出荷しました！</div>
+        <div class="tag"><b>${esc(label(b.agent))}</b> ${esc(state.release?.lastShip?.version ? `${state.release.lastShip.version} を` : '')}出荷しました！</div>
         <div class="truck">${truckSvg(AGENTS[b.agent]?.color ?? '#a3988b', 'release', 12)}</div></div>`)
     }
     if (!lanes.length) {
@@ -617,14 +683,17 @@
         <div class="truck">${truckSvg('#a3988b', 'bundle', 0)}</div></div>`)
     }
     // Rebuild the lanes only when who/what changes, so the walking animation is not restarted every poll.
-    const shape = JSON.stringify([(state.builds || []).map((b) => b.agent + b.kind + b.startedAt), lanes.length, lanes.some((l) => l.includes('leaving'))])
-    if (box.dataset.shape !== shape || box.querySelector('.parked')) {
+    const shown = (state.builds || []).filter((b) => !(sh && b.agent === 'release'))
+    const shape = JSON.stringify([shown.map((b) => b.agent + b.kind + b.startedAt), sh ? sh.startedAt + sh.stage : null, lanes.length, lanes.some((l) => l.includes('leaving'))])
+    if (box.dataset.shape !== shape || box.querySelector('.parked, .failed')) {
       box.innerHTML = lanes.join('')
       box.dataset.shape = shape
       return
     }
-    const els = box.querySelectorAll('.lane:not(.leaving)')
-    ;(state.builds || []).forEach((b, i) => {
+    const shipEl = box.querySelector('.lane.ship')
+    if (sh && shipEl) $('.tag small', shipEl).textContent = shipDetail(sh, now)
+    const els = box.querySelectorAll('.lane:not(.leaving):not(.ship):not(.failed)')
+    shown.forEach((b, i) => {
       const el = els[i]
       if (!el) return
       $('.tag small', el).textContent = `${b.detail || ''}・${elapsed(b.startedAt, now)}`
@@ -741,10 +810,14 @@
       if (!el) continue
       const until = a.limitedUntil || state.limits?.local?.until
       const resting = !a.remote && until && Date.parse(until) > now
-      el.className = `agent ${a.busy ? 'busy' : 'idle'}${resting ? ' resting' : ''}`
+      // the release script runs on its own (started by the orchestrator): the release manager's seat shows it too
+      const sh = a.name === 'release' && !a.busy ? state.shipping : null
+      el.className = `agent ${a.busy || sh ? 'busy' : 'idle'}${resting ? ' resting' : ''}`
       $('.name', el).textContent = label(a.name)
       $('.model', el).textContent = a.fallback ? 'この PC が代理中' : a.remote ? `${a.remote} さんの PC` : MODEL_NAME[a.model] ?? a.model
-      $('.bubble', el).innerHTML = a.busy
+      $('.bubble', el).innerHTML = sh
+        ? `<span class="what">${esc(sh.version ? `${sh.version} を出荷中` : '出荷の準備中')}</span><span class="build">📦 ${esc(shipStepName(sh.stage))}</span><span class="time">${esc(elapsed(sh.startedAt, now))}<span class="typing"><i></i><i></i><i></i></span></span>`
+        : a.busy
         ? `<span class="what">${esc(describe(a, state.tickets))}</span>${buildsOf(a.name).length ? `<span class="build">📦 ${esc(buildsOf(a.name).map((b) => BUILD[b.kind]?.name ?? b.kind).join('・'))}</span>` : ''}<span class="time">${esc(elapsed(a.startedAt, now))}<span class="typing"><i></i><i></i><i></i></span></span>`
         : resting ? `<span class="what">上限で休憩中</span><span class="time">〜${esc(hhmm(until))}</span>` : '<span class="zzz">z z</span>'
       el.setAttribute('aria-label', `${label(a.name)}: ${a.busy ? describe(a, state.tickets) : resting ? '使用量の上限で休憩中' : '待機中'}`)
@@ -1061,8 +1134,10 @@
       builds: [
         { agent: 'engineer-2', kind: 'rust', detail: 'cargo check', startedAt: min(1.5) },
         ...(phase !== 2 ? [{ agent: 'engineer-3', kind: 'typecheck', detail: 'tsc', startedAt: min(0.4) }] : []),
-        ...(phase === 1 ? [{ agent: 'release', kind: 'release', detail: 'npm run release', startedAt: min(3) }] : []),
+        ...(phase === 1 ? [{ agent: 'release', kind: 'release', detail: 'tauri build', startedAt: min(3) }] : []),
       ],
+      shipping: phase === 1 ? { version: '0.1.42', stage: 'build', stageAt: min(3), startedAt: min(4), tickets: ['T-11', 'T-13', 'T-16'], by: 'orchestrator' } : null,
+      release: { lastShip: { version: phase === 2 ? '0.1.42' : '0.1.41', at: min(phase === 2 ? 0.05 : 600) }, lastShipError: null },
       recentBuilds: phase === 2 ? [{ agent: 'release', kind: 'release', detail: 'npm run release', startedAt: min(4), endedAt: new Date(now - 3000).toISOString() }] : [],
       messages: demoMsgs.slice(-80),
       log: [`${min(3)} ping received`, `${min(3)} operator-1: start customer:a1b2c3 (resume)`, `${min(1)} engineer-2: start T-14 (new session)`],
