@@ -429,6 +429,7 @@
     'engineer-1': { label: 'そら',     color: '#9b7be0', acc: 'hardhat' },
     'engineer-2': { label: 'ゆず',     color: '#e57ab3', acc: 'hardhat' },
     'engineer-3': { label: 'もも',     color: '#b5835a', acc: 'hardhat' },
+    'engineer-4': { label: 'おむ',     color: '#e8b83a', acc: 'beret' },
   }
   const ORDER = Object.keys(AGENTS)
   const MODEL_NAME = { opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku' }
@@ -498,7 +499,7 @@
   // ───────── helpers ─────────
   const $ = (s, el = document) => el.querySelector(s)
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-  const label = (n) => AGENTS[n]?.label ?? (n === 'human' ? 'ひと' : n === 'orchestrator' ? 'オーケストレーター' : n === 'github' ? 'GitHub で募集中'
+  const label = (n) => state?.agents?.find((a) => a.name === n)?.displayName ?? AGENTS[n]?.label ?? (n === 'human' ? 'ひと' : n === 'orchestrator' ? 'オーケストレーター' : n === 'github' ? 'GitHub で募集中'
     : String(n).startsWith('gh:') ? '@' + n.slice(3) : n)
   function custLabel(to) {
     const id = String(to).slice('customer:'.length)
@@ -741,7 +742,8 @@
       const until = a.limitedUntil || state.limits?.local?.until
       const resting = !a.remote && until && Date.parse(until) > now
       el.className = `agent ${a.busy ? 'busy' : 'idle'}${resting ? ' resting' : ''}`
-      $('.model', el).textContent = a.remote ? `${a.remote} さんの PC` : MODEL_NAME[a.model] ?? a.model
+      $('.name', el).textContent = label(a.name)
+      $('.model', el).textContent = a.fallback ? 'この PC が代理中' : a.remote ? `${a.remote} さんの PC` : MODEL_NAME[a.model] ?? a.model
       $('.bubble', el).innerHTML = a.busy
         ? `<span class="what">${esc(describe(a, state.tickets))}</span>${buildsOf(a.name).length ? `<span class="build">📦 ${esc(buildsOf(a.name).map((b) => BUILD[b.kind]?.name ?? b.kind).join('・'))}</span>` : ''}<span class="time">${esc(elapsed(a.startedAt, now))}<span class="typing"><i></i><i></i><i></i></span></span>`
         : resting ? `<span class="what">上限で休憩中</span><span class="time">〜${esc(hhmm(until))}</span>` : '<span class="zzz">z z</span>'
