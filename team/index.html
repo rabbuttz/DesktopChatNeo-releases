@@ -194,6 +194,8 @@
   .agent .name { margin-top: 6px; font-size: 12px; color: var(--ink); white-space: nowrap; }
   .agent .model { font-size: 10px; color: var(--ink-3); font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; }
   .agent.idle .sprite { opacity: .78; }
+  .agent.resting .sprite { opacity: .45; filter: grayscale(.6); }
+  .agent.resting .bubble { background: var(--bubble); border-color: var(--line); color: var(--ink-2); text-align: left; padding-top: 5px; }
   .agent.busy .sprite svg { animation: bob .6s steps(2) infinite; }
   .agent.idle .sprite svg { animation: breathe 3.2s ease-in-out infinite; }
   .agent.busy .eyes { animation: blink 4s infinite; transform-origin: center; }
@@ -736,12 +738,14 @@
     for (const a of state.agents) {
       const el = seatEls[a.name]
       if (!el) continue
-      el.className = `agent ${a.busy ? 'busy' : 'idle'}`
+      const until = a.limitedUntil || state.limits?.local?.until
+      const resting = !a.remote && until && Date.parse(until) > now
+      el.className = `agent ${a.busy ? 'busy' : 'idle'}${resting ? ' resting' : ''}`
       $('.model', el).textContent = a.remote ? `${a.remote} さんの PC` : MODEL_NAME[a.model] ?? a.model
       $('.bubble', el).innerHTML = a.busy
         ? `<span class="what">${esc(describe(a, state.tickets))}</span>${buildsOf(a.name).length ? `<span class="build">📦 ${esc(buildsOf(a.name).map((b) => BUILD[b.kind]?.name ?? b.kind).join('・'))}</span>` : ''}<span class="time">${esc(elapsed(a.startedAt, now))}<span class="typing"><i></i><i></i><i></i></span></span>`
-        : '<span class="zzz">z z</span>'
-      el.setAttribute('aria-label', `${label(a.name)}: ${a.busy ? describe(a, state.tickets) : '待機中'}`)
+        : resting ? `<span class="what">上限で休憩中</span><span class="time">〜${esc(hhmm(until))}</span>` : '<span class="zzz">z z</span>'
+      el.setAttribute('aria-label', `${label(a.name)}: ${a.busy ? describe(a, state.tickets) : resting ? '使用量の上限で休憩中' : '待機中'}`)
     }
   }
 
