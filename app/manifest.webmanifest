@@ -1,0 +1,17 @@
+{
+  "name": "DesktopChat Neo",
+  "short_name": "DC Neo",
+  "description": "DesktopChat Neo のスマホ版。テキストチャット・DM・通話",
+  "lang": "ja",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#24212f",
+  "theme_color": "#8f7cff",
+  "icons": [
+    { "src": "icon-256.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
