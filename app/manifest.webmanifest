@@ -1,7 +1,7 @@
 {
   "name": "DesktopChat Neo",
   "short_name": "DC Neo",
-  "description": "DesktopChat Neo のスマホ版。テキストチャット・DM・通話",
+  "description": "DesktopChat Neo のスマホ版。テキストチャット・DM・通話・画面共有を見る",
   "lang": "ja",
   "id": "./",
   "start_url": "./",
