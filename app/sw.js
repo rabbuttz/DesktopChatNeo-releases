@@ -2,8 +2,8 @@
 // writes it out as sw.js. It keeps the app itself, so the app opens without waiting for the network, and never touches
 // anything from elsewhere (Supabase: sign-in, chat, pictures — always the network). A new build waits until the page
 // says to go on (its 更新があります), then takes over and the page reloads.
-const CACHE = 'dcneo-mobile-mw0iu5pv'
-const FILES = [...["./","./assets/index-f5rJNbqL.js","./assets/index-BZ_GWIMI.css"], './manifest.webmanifest', './icon-256.png', './icon-512.png']
+const CACHE = 'dcneo-mobile-mw0j17mm'
+const FILES = [...["./","./assets/index-Cy78ekd8.js","./assets/index-BZ_GWIMI.css"], './manifest.webmanifest', './icon-256.png', './icon-512.png']
 
 self.addEventListener('install', (e) => {
   // past the HTTP cache: an index.html a few minutes old would point at the last build's files
