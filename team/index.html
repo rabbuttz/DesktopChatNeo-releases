@@ -443,9 +443,9 @@
 (() => {
   // ───────── characters ─────────
   const AGENTS = {
-    'operator-1': { label: 'ひより',   color: '#4f9dde', acc: 'headset' },
-    'operator-2': { label: 'こはる',   color: '#3fb8a9', acc: 'headset' },
-    'operator-3': { label: 'つむぎ',   color: '#7bc950', acc: 'headset' },
+    'operator-1': { label: 'けもばくん', color: '#4f9dde', acc: 'headset' },
+    'operator-2': { label: 'もけばくん', color: '#3fb8a9', acc: 'headset' },
+    'operator-3': { label: 'ばもけくん', color: '#7bc950', acc: 'headset' },
     'pm':         { label: 'さくら',   color: '#f08fb0', acc: 'tie' },
     'release':    { label: 'みのり',   color: '#e0a03a', acc: 'vest' },
     'lead-1':     { label: 'あおい',   color: '#4a7fd6', acc: 'cap' },
@@ -1039,7 +1039,7 @@
 
   // ───────── data ─────────
   const demo = new URLSearchParams(location.search).has('demo')
-  // Opened from the local orchestrator → poll its API; anywhere else (the public page) → listen on Realtime.
+  // Opened from the local orchestrator → poll its API; anywhere else (the public page) → read the public Gist.
   const PUBLIC = !demo && !['127.0.0.1', 'localhost'].includes(location.hostname)
   const banner = $('#banner')
 
@@ -1096,9 +1096,9 @@
     return {
       now: now.toISOString(), paused: false, orchestratorAlive: true,
       agents: [
-        ag('operator-1', 'haiku', true, 'customer:a1b2c3', 2, 10),
-        ag('operator-2', 'haiku', phase !== 1, 'customer:owner', 1, 30),
-        ag('operator-3', 'haiku', phase === 2, 'customer:9f8e7d', 0, 60),
+        ag('operator-1', 'opus', true, 'customer:a1b2c3', 2, 10),
+        ag('operator-2', 'opus', phase !== 1, 'customer:owner', 1, 30),
+        ag('operator-3', 'opus', phase === 2, 'customer:9f8e7d', 0, 60),
         { ...ag('pm', 'opus', phase !== 2, 'pm:remote', 4, 20), remote: 'totegamma' },
         ag('release', 'opus', phase === 1, 'release:message', 3, 25),
         ag('lead-1', 'opus', true, phase === 1 ? 'lead:patrol' : 'lead:message', 3, 15),
@@ -1163,34 +1163,117 @@
   })
   addEventListener('resize', () => state && renderLinks())
 
-  // The public page: the orchestrator broadcasts the (redacted) state every few seconds on 'team-status'.
-  const SUPABASE_URL = 'https://bnsugwjuvfhuxljnwkzn.supabase.co'
-  const SUPABASE_KEY = 'sb_publishable_yUcD54yAY5IosL_9LjunfQ_CfWxmiUI'
-  function listen() {
+  // The public page: the orchestrator writes the (redacted) state to a public GitHub Gist when it changes (at most about once a minute)
+  // and at least every 10 minutes. This page reads that Gist every 2 minutes (every 5 minutes after a GitHub rate limit),
+  // and only while the tab is visible, so the data can be a few minutes behind.
+  const GIST_OWNER = 'rabbuttz'
+  const GIST_DESCRIPTION = 'desktopchatneo-team-status'
+  const GIST_FILE = 'team-status.json'
+  const GIST_KEY = 'team-status-gist-id'
+  const GIST_POLL_MS = 120_000
+  const GIST_POLL_LIMITED_MS = 300_000
+  const STALE_MS = 15 * 60_000
+  function listenGist() {
     document.querySelector('.tabs button[data-tab="log"]').hidden = true
     $('#conn-text').textContent = '最新の様子を待っています…'
     banner.className = 'banner show'
-    banner.textContent = 'チームの様子を受け取っています（15 秒ほどかかることがあります）。'
-    const s = document.createElement('script')
-    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'
-    s.onload = () => {
-      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
-      client.channel('team-status').on('broadcast', { event: 'state' }, ({ payload }) => accept(payload)).subscribe()
+    banner.textContent = 'チームの様子を取得しています（数分遅れて表示されることがあります）。'
+    let gistId = null
+    let etag = null
+    let raw = false // after a rate limit: read the raw file instead of the API
+    let pollMs = GIST_POLL_MS
+    let timer = null
+    let busy = false
+
+    function httpError(res) {
+      const err = new Error(`HTTP ${res.status}`)
+      err.status = res.status
+      return err
     }
-    s.onerror = () => { banner.textContent = '読み込みに失敗しました。ページを開き直してください。' }
-    document.head.appendChild(s)
-    // Keep the timers moving between broadcasts, and say so when they stop coming.
+
+    // Looked up once per browser session; the id is kept in sessionStorage.
+    async function findGistId() {
+      try { const saved = sessionStorage.getItem(GIST_KEY); if (saved) return saved } catch { /* no storage */ }
+      const res = await fetch(`https://api.github.com/users/${GIST_OWNER}/gists?per_page=100`, { headers: { Accept: 'application/vnd.github+json' } })
+      if (!res.ok) throw httpError(res)
+      const hit = (await res.json()).find((g) => g.description === GIST_DESCRIPTION)
+      if (!hit) throw new Error('まだ公開されていません')
+      try { sessionStorage.setItem(GIST_KEY, hit.id) } catch { /* no storage */ }
+      return hit.id
+    }
+
+    async function readRaw() {
+      const res = await fetch(`https://gist.githubusercontent.com/${GIST_OWNER}/${gistId}/raw/${GIST_FILE}`, { cache: 'no-store' })
+      if (!res.ok) throw httpError(res)
+      return JSON.parse(await res.text())
+    }
+
+    // The payload, or null when the Gist has not changed since the last read (304).
+    async function fetchPayload() {
+      if (raw) return readRaw()
+      const headers = { Accept: 'application/vnd.github+json' }
+      if (etag) headers['If-None-Match'] = etag
+      const res = await fetch(`https://api.github.com/gists/${gistId}`, { headers })
+      if (res.status === 304) return null
+      if (res.status === 403 || res.status === 429) {
+        raw = true
+        pollMs = GIST_POLL_LIMITED_MS
+        return readRaw()
+      }
+      if (!res.ok) throw httpError(res)
+      etag = res.headers.get('ETag')
+      const file = (await res.json()).files?.[GIST_FILE]
+      if (!file) throw new Error('ファイルがありません')
+      if (!file.truncated) return JSON.parse(file.content)
+      const big = await fetch(file.raw_url, { cache: 'no-store' })
+      if (!big.ok) throw httpError(big)
+      return JSON.parse(await big.text())
+    }
+
+    async function pull() {
+      if (busy) return
+      clearTimeout(timer)
+      timer = null
+      // Hidden tabs fetch nothing; the visibilitychange listener below starts again when the tab is shown.
+      if (document.visibilityState === 'hidden') return
+      busy = true
+      try {
+        gistId ??= await findGistId()
+        const next = await fetchPayload()
+        if (next) {
+          if (!Array.isArray(next.agents)) throw new Error('まだ様子がありません')
+          accept(next)
+        } else {
+          banner.className = 'banner'
+        }
+      } catch (e) {
+        if (e.status === 403 || e.status === 429) pollMs = GIST_POLL_LIMITED_MS
+        banner.className = 'banner show'
+        banner.textContent = `チームの様子を取得できませんでした（${e.message}）。数分遅れて表示されることがあります。`
+      } finally {
+        busy = false
+      }
+      timer = setTimeout(pull, pollMs)
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') pull()
+    })
+    // Keep the timers moving between reads, and say so when the data is too old.
     setInterval(() => {
       if (!state) return
       render()
-      if (Date.now() - receivedAt > 60_000) {
+      if (Date.now() - Date.parse(state.now) > STALE_MS) {
         $('#conn-dot').className = 'dot bad'
         $('#conn-text').textContent = '更新が止まっています'
+        banner.className = 'banner show'
+        banner.textContent = '更新が止まっています。数分遅れて表示されることがあります。'
       }
     }, 5000)
+    pull()
   }
 
-  if (PUBLIC) listen()
+  if (PUBLIC) listenGist()
   else {
     poll()
     setInterval(poll, demo ? 2500 : 3000)
