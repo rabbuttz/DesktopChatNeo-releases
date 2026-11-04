@@ -2,8 +2,13 @@
 // writes it out as sw.js. It keeps the app itself, so the app opens without waiting for the network, and never touches
 // anything from elsewhere (Supabase: sign-in, chat, pictures — always the network). A new build waits until the page
 // says to go on (its 更新があります), then takes over and the page reloads.
-const CACHE = 'dcneo-mobile-mw1v67mc'
-const FILES = [...["./","./assets/index-DGqjHwPB.js","./assets/index-Ct09v0v9.css"], './manifest.webmanifest', './icon-256.png', './icon-512.png']
+const CACHE = 'dcneo-mobile-mw1vhe5x'
+const FILES = [...["./","./assets/index-Bl7YFZIZ.js","./assets/stage-CIySPXfs.js","./assets/tracking-CIQT-xXv.js","./assets/vision_bundle-DmYfrj-j.js","./assets/index-DuqRygnz.css","./assets/tracking-worker-cxzFxgBs.js"], './manifest.webmanifest', './icon-256.png', './icon-512.png']
+// The avatar's big files (T-697: MediaPipe's wasm, the face model, the desk's keyboard and animations; vite.config.ts
+// copies them in): not fetched on install, kept the first time they are used, and kept across builds (they rarely
+// change; a new set comes with a new name here)
+const ASSETS = 'dcneo-assets-1'
+const ASSET_DIRS = ['mediapipe/', 'models/', 'anims/']
 
 self.addEventListener('install', (e) => {
   // past the HTTP cache: an index.html a few minutes old would point at the last build's files
@@ -61,7 +66,9 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('dcneo-mobile-') && k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) =>
+        Promise.all(keys.filter((k) => (k.startsWith('dcneo-mobile-') && k !== CACHE) || (k.startsWith('dcneo-assets-') && k !== ASSETS)).map((k) => caches.delete(k)))
+      )
       .then(() => self.clients.claim())
   )
 })
@@ -72,6 +79,22 @@ self.addEventListener('fetch', (e) => {
   // any page of the app is the app (index.html as kept)
   if (req.mode === 'navigate') {
     e.respondWith(caches.match(self.registration.scope, { cacheName: CACHE }).then((hit) => hit || fetch(req)))
+    return
+  }
+  const path = req.url.slice(self.registration.scope.length)
+  if (ASSET_DIRS.some((d) => path.startsWith(d))) {
+    e.respondWith(
+      caches.open(ASSETS).then((c) =>
+        c.match(req).then(
+          (hit) =>
+            hit ||
+            fetch(req).then((res) => {
+              if (res.ok) void c.put(req, res.clone()).catch(() => {})
+              return res
+            })
+        )
+      )
+    )
     return
   }
   e.respondWith(caches.match(req, { cacheName: CACHE }).then((hit) => hit || fetch(req)))
