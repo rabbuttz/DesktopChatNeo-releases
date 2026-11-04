@@ -2,8 +2,8 @@
 // writes it out as sw.js. It keeps the app itself, so the app opens without waiting for the network, and never touches
 // anything from elsewhere (Supabase: sign-in, chat, pictures — always the network). A new build waits until the page
 // says to go on (its 更新があります), then takes over and the page reloads.
-const CACHE = 'dcneo-mobile-mw1n9uev'
-const FILES = [...["./","./assets/index-BH4fikbw.js","./assets/index-BZ_GWIMI.css"], './manifest.webmanifest', './icon-256.png', './icon-512.png']
+const CACHE = 'dcneo-mobile-mw1o0iit'
+const FILES = [...["./","./assets/index-CDIiC73a.js","./assets/index-BZ_GWIMI.css"], './manifest.webmanifest', './icon-256.png', './icon-512.png']
 
 self.addEventListener('install', (e) => {
   // past the HTTP cache: an index.html a few minutes old would point at the last build's files
@@ -12,6 +12,21 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('message', (e) => {
   if (e.data === 'skip-waiting') self.skipWaiting()
+})
+
+// a DM notification (T-944, notify.ts) is tapped: the app comes to the front and opens that DM. When the app is open
+// it is told so (open-dm); when it isn't, it opens at #dm=<otherId>, which the page reads at start-up.
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close()
+  const otherId = e.notification.data && e.notification.data.otherId
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      const win = list.find((c) => c.url.startsWith(self.registration.scope))
+      if (!win) return self.clients.openWindow(self.registration.scope + (otherId ? '#dm=' + encodeURIComponent(otherId) : ''))
+      const shown = win.focus ? win.focus() : Promise.resolve(win)
+      return shown.then((c) => (otherId ? (c || win).postMessage({ type: 'open-dm', otherId }) : undefined))
+    })
+  )
 })
 
 self.addEventListener('activate', (e) => {
