@@ -2,8 +2,8 @@
 // writes it out as sw.js. It keeps the app itself, so the app opens without waiting for the network, and never touches
 // anything from elsewhere (Supabase: sign-in, chat, pictures — always the network). A new build waits until the page
 // says to go on (its 更新があります), then takes over and the page reloads.
-const CACHE = 'dcneo-mobile-mw22awfd'
-const FILES = [...["./","./assets/index-CVS6DYSN.js","./assets/stage-9z71zBYl.js","./assets/tracking-BvLRJNzM.js","./assets/vision_bundle-Zmh9h6Mg.js","./assets/index-DuqRygnz.css","./assets/tracking-worker-cxzFxgBs.js"], './manifest.webmanifest', './icon-256.png', './icon-512.png']
+const CACHE = 'dcneo-mobile-mw22l8r7'
+const FILES = [...["./","./assets/index-CZ0gH2sY.js","./assets/stage-BnwBgeYp.js","./assets/tracking-BIxpGts3.js","./assets/vision_bundle-CflGXpsP.js","./assets/index-DuqRygnz.css","./assets/tracking-worker-cxzFxgBs.js"], './manifest.webmanifest', './icon-256.png', './icon-512.png']
 // The avatar's big files (T-697: MediaPipe's wasm, the face model, the desk's keyboard and animations; vite.config.ts
 // copies them in): not fetched on install, kept the first time they are used, and kept across builds (they rarely
 // change; a new set comes with a new name here)
