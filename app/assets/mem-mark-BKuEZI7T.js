@@ -1,1 +1,0 @@
-var e=new Map;function t(t,n=0){let r=window.desktop;if(!r?.memMark)return;let i=e.get(t)??0;if(i>=3)return;e.set(t,i+1);let a=()=>{try{r.memMark(t).catch(()=>{})}catch{}};n>0?setTimeout(a,n):a()}export{t};
