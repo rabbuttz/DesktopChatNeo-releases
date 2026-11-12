@@ -2,8 +2,8 @@
 // writes it out as sw.js. It keeps the app itself, so the app opens without waiting for the network, and never touches
 // anything from elsewhere (Supabase: sign-in, chat, pictures — always the network). A new build waits until the page
 // says to go on (its 更新があります), then takes over and the page reloads.
-const CACHE = 'dcneo-mobile-mwdcrg2v'
-const FILES = [...["./","./assets/index-DXRjFw1S.js","./assets/stage-Chtr4jpn.js","./assets/tracking-CAFtjEzN.js","./assets/vision_bundle-D91oXxB0.js","./assets/index-tYA8UJX-.css","./assets/tracking-worker-cxzFxgBs.js"], './manifest.webmanifest', './icon-256.png', './icon-512.png']
+const CACHE = 'dcneo-mobile-mwdcznxw'
+const FILES = [...["./","./assets/index-BXSVAr_r.js","./assets/stage-CdXRQoho.js","./assets/tracking-8nUCrh8_.js","./assets/vision_bundle-Ce885t9N.js","./assets/index-tYA8UJX-.css","./assets/tracking-worker-cxzFxgBs.js"], './manifest.webmanifest', './icon-256.png', './icon-512.png']
 // The avatar's big files (T-697: MediaPipe's wasm, the face model, the desk's keyboard and animations; vite.config.ts
 // copies them in): not fetched on install, kept the first time they are used, and kept across builds (they rarely
 // change; a new set comes with a new name here)
@@ -15,8 +15,38 @@ self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))))
 })
 
+// The number on the app's icon (T-1409, badge.ts): the page sends it whenever it changes and it is kept here (in a
+// cache of its own, which survives new builds), so a DM push while the app is closed adds one to it.
+const BADGE = 'dcneo-badge'
+const BADGE_KEY = './__badge'
+
+function readBadge() {
+  return caches
+    .open(BADGE)
+    .then((c) => c.match(BADGE_KEY))
+    .then((r) => (r ? r.text() : '0'))
+    .then((t) => Math.max(0, parseInt(t, 10) || 0))
+    .catch(() => 0)
+}
+
+function keepBadge(n) {
+  return caches
+    .open(BADGE)
+    .then((c) => c.put(BADGE_KEY, new Response(String(n))))
+    .catch(() => {})
+}
+
+/** one more unread DM while the app isn't on screen: the icon's number goes up (where there are icon numbers) */
+function badgeUp() {
+  if (typeof self.navigator.setAppBadge !== 'function') return Promise.resolve()
+  return readBadge().then((n) =>
+    keepBadge(n + 1).then(() => self.navigator.setAppBadge(n + 1).catch(() => {}))
+  )
+}
+
 self.addEventListener('message', (e) => {
   if (e.data === 'skip-waiting') self.skipWaiting()
+  if (e.data && e.data.type === 'badge' && typeof e.data.n === 'number') e.waitUntil(keepBadge(Math.max(0, e.data.n)))
 })
 
 // a DM notification (T-944, notify.ts) is tapped: the app comes to the front and opens that DM. When the app is open
@@ -40,7 +70,8 @@ self.addEventListener('notificationclick', (e) => {
 })
 
 // a Web Push from dm-push (T-971): a DM came in while the app is closed. Nothing is shown when a page of the app is on
-// screen (notify.ts shows that one itself, and not twice). Otherwise it is a notification, as notify.ts makes them.
+// screen (notify.ts shows that one itself, and not twice). Otherwise it is a notification, as notify.ts makes them,
+// and the icon's number goes up by one (T-1409; the page sets the right number again when it comes back).
 self.addEventListener('push', (e) => {
   let d = {}
   try {
@@ -51,13 +82,16 @@ self.addEventListener('push', (e) => {
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       if (list.some((c) => c.visibilityState === 'visible')) return undefined
-      return self.registration.showNotification(d.title || 'DM', {
-        body: d.body || '',
-        tag: d.server_id ? 'dm-' + d.server_id : undefined,
-        data: { serverId: d.server_id },
-        icon: './icon-256.png',
-        badge: './icon-256.png',
-      })
+      return Promise.all([
+        self.registration.showNotification(d.title || 'DM', {
+          body: d.body || '',
+          tag: d.server_id ? 'dm-' + d.server_id : undefined,
+          data: { serverId: d.server_id },
+          icon: './icon-256.png',
+          badge: './icon-256.png',
+        }),
+        badgeUp(),
+      ])
     })
   )
 })
