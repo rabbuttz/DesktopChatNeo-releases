@@ -24,10 +24,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="DC Neo" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- T-1432: default, not black-translucent. Under the status bar, iOS 26 on the home screen ends the page the status
+         bar's height above the screen's bottom (812 of 874) and leaves a band there the page can't draw in (T-1397).
+         With the page starting below the status bar, it can end at the screen's bottom. The bar takes theme-color
+         (prefs.ts) where iOS lets it; pwa.ts's bottomGap counts no band then. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="format-detection" content="telephone=no" />
     <meta name="robots" content="noindex" />
-    <script type="module" crossorigin src="./assets/index-CgdgCgWZ.js"></script>
+    <script type="module" crossorigin src="./assets/index-BbU6dPGq.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-DUImnFtD.css">
   </head>
   <body>
